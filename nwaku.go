@@ -319,6 +319,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/libp2p/go-libp2p/core/peer"
 	libp2pproto "github.com/libp2p/go-libp2p/core/protocol"
@@ -329,6 +330,8 @@ import (
 	"github.com/waku-org/go-waku/waku/v2/utils"
 	"go.uber.org/zap"
 )
+
+const requestTimeout = 30 * time.Second
 
 type WakuConfig struct {
 	Host                 string   `json:"host,omitempty"`
@@ -513,6 +516,7 @@ func New(nwakuCfg *WakuConfig, logger *zap.Logger) (*Waku, error) {
 
 	logger.Info("starting wakuv2 with config", zap.Any("nwakuCfg", nwakuCfg))
 
+	ctx, cancel := context.WithCancel(context.Background())
 	wakunode, err := newWakuNode(ctx, nwakuCfg)
 	if err != nil {
 		cancel()

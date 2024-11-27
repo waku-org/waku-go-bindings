@@ -4,8 +4,8 @@
 package wakuv2
 
 /*
-	#cgo LDFLAGS: -L../third_party/nwaku/build/ -lnegentropy -lwaku
-	#cgo LDFLAGS: -L../third_party/nwaku -Wl,-rpath,../third_party/nwaku/build/
+	#cgo LDFLAGS: -L./third_party/nwaku/build/ -lnegentropy -lwaku
+	#cgo LDFLAGS: -L./third_party/nwaku -Wl,-rpath,../third_party/nwaku/build/
 
 	#include "./third_party/nwaku/library/libwaku.h"
 	#include <stdio.h>
@@ -541,6 +541,14 @@ func (n *WakuNode) postTask(reqType requestType, input any) (any, error) {
 		return nil, response.err
 	}
 	return response.value, nil
+}
+
+//export globalEventCallback
+func globalEventCallback(callerRet C.int, msg *C.char, len C.size_t, userData unsafe.Pointer) {
+	// This is shared among all Golang instances
+	// TODO-nwaku
+	// self := Waku{wakuCtx: userData}
+	// self.MyEventCallback(callerRet, msg, len)
 }
 
 func (n *WakuNode) processLoop(ctx context.Context) {

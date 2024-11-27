@@ -369,16 +369,20 @@ type Waku struct {
 // Start implements node.Service, starting the background data propagation thread
 // of the Waku protocol.
 func (w *Waku) Start() error {
+	fmt.Println("---------------- Start 1 -------------")
 	err := w.node.Start()
+	fmt.Println("---------------- Start 2 -------------")
 	if err != nil {
 		return fmt.Errorf("failed to start nwaku node: %v", err)
 	}
 
 	peerID, err := w.node.PeerID()
+	fmt.Println("---------------- Start 3 -------------")
 	if err != nil {
 		return err
 	}
 
+	fmt.Println("---------------- Start 4 -------------")
 	w.logger.Info("WakuV2 PeerID", zap.Stringer("id", peerID))
 
 	return nil
@@ -526,6 +530,7 @@ func New(nwakuCfg *WakuConfig, logger *zap.Logger) (*Waku, error) {
 	return &Waku{
 		node:    wakunode,
 		wakuCfg: nwakuCfg,
+		logger:  logger,
 	}, nil
 }
 

@@ -1,4 +1,4 @@
-module github.com/status-im/status-go
+module github.com/waku-org/waku-go-bindings
 
 go 1.21
 

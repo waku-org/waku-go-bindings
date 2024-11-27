@@ -363,8 +363,8 @@ import (
 	storepb "github.com/waku-org/go-waku/waku/v2/protocol/store/pb"
 	"github.com/waku-org/go-waku/waku/v2/utils"
 
-	"github.com/status-im/status-go/wakuv2/common"
-	"github.com/status-im/status-go/wakuv2/persistence"
+	"github.com/waku-org/waku-go-bindings/common"
+	"github.com/waku-org/waku-go-bindings/persistence"
 
 	node "github.com/waku-org/go-waku/waku/v2/node"
 	"github.com/waku-org/go-waku/waku/v2/protocol/pb"

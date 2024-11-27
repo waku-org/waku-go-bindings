@@ -11,7 +11,7 @@ import (
 	"github.com/waku-org/go-waku/waku/v2/payload"
 	"github.com/waku-org/go-waku/waku/v2/protocol"
 
-	"github.com/status-im/status-go/logutils"
+	"github.com/waku-org/waku-go-bindings/logutils"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

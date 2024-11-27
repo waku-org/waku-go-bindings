@@ -5,8 +5,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/status-im/status-go/common"
-	"github.com/status-im/status-go/eth-node/types"
+	"github.com/waku-org/waku-go-bindings/types"
 )
 
 type Measure struct {

@@ -28,7 +28,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/status-im/status-go/logutils"
+	"github.com/waku-org/waku-go-bindings/logutils"
 )
 
 // Filter represents a Waku message filter

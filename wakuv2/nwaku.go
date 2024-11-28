@@ -1,10 +1,10 @@
 package wakuv2
 
 /*
-	#cgo LDFLAGS: -L./third_party/nwaku/build/ -lnegentropy -lwaku
-	#cgo LDFLAGS: -L./third_party/nwaku -Wl,-rpath,../third_party/nwaku/build/
+	#cgo LDFLAGS: -L../third_party/nwaku/build/ -lnegentropy -lwaku
+	#cgo LDFLAGS: -L../third_party/nwaku -Wl,-rpath,../third_party/nwaku/build/
 
-	#include "./third_party/nwaku/library/libwaku.h"
+	#include "../third_party/nwaku/library/libwaku.h"
 	#include <stdio.h>
 	#include <stdlib.h>
 

@@ -4,7 +4,6 @@
 package wakuv2
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -28,12 +27,9 @@ func TestDial(t *testing.T) {
 		TcpPort:         60020,
 	}
 
-	fmt.Println("------------ 1 -------------")
 	dialerNode, err := New(&dialerNodeWakuConfig, logger.Named("dialerNode"))
 	require.NoError(t, err)
-	fmt.Println("------------ 2 -------------")
 	require.NoError(t, dialerNode.Start())
-	fmt.Println("------------ 3 -------------")
 	time.Sleep(1 * time.Second)
 
 	// start node that will receive the dial
@@ -47,14 +43,10 @@ func TestDial(t *testing.T) {
 		TcpPort:         60021,
 	}
 	receiverNode, err := New(&receiverNodeWakuConfig, logger.Named("receiverNode"))
-	fmt.Println("------------ 4 -------------")
 	require.NoError(t, err)
 	require.NoError(t, receiverNode.Start())
-	fmt.Println("------------ 5 -------------")
 	time.Sleep(1 * time.Second)
-	fmt.Println("------------ 6 -------------")
 	receiverMultiaddr, err := receiverNode.node.ListenAddresses()
-	fmt.Println("------------ 7 -------------")
 	require.NoError(t, err)
 	require.NotNil(t, receiverMultiaddr)
 	// Check that both nodes start with no connected peers

@@ -4,6 +4,7 @@
 package wakuv2
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"testing"
@@ -14,66 +15,6 @@ import (
 	"github.com/cenkalti/backoff/v3"
 	"github.com/stretchr/testify/require"
 )
-
-func TestDial(t *testing.T) {
-	logger, err := zap.NewDevelopment()
-	require.NoError(t, err)
-
-	// start node that will initiate the dial
-	dialerNodeWakuConfig := WakuConfig{
-		EnableRelay:     true,
-		LogLevel:        "DEBUG",
-		Discv5Discovery: false,
-		ClusterID:       16,
-		Shards:          []uint16{64},
-		Discv5UdpPort:   9020,
-		TcpPort:         60020,
-	}
-
-	dialerNode, err := New(&dialerNodeWakuConfig, logger.Named("dialerNode"))
-	require.NoError(t, err)
-	require.NoError(t, dialerNode.Start())
-	time.Sleep(1 * time.Second)
-
-	// start node that will receive the dial
-	receiverNodeWakuConfig := WakuConfig{
-		EnableRelay:     true,
-		LogLevel:        "DEBUG",
-		Discv5Discovery: false,
-		ClusterID:       16,
-		Shards:          []uint16{64},
-		Discv5UdpPort:   9021,
-		TcpPort:         60021,
-	}
-	receiverNode, err := New(&receiverNodeWakuConfig, logger.Named("receiverNode"))
-	require.NoError(t, err)
-	require.NoError(t, receiverNode.Start())
-	time.Sleep(1 * time.Second)
-	receiverMultiaddr, err := receiverNode.node.ListenAddresses()
-	require.NoError(t, err)
-	require.NotNil(t, receiverMultiaddr)
-	// Check that both nodes start with no connected peers
-	dialerPeerCount, err := dialerNode.PeerCount()
-	require.NoError(t, err)
-	require.True(t, dialerPeerCount == 0, "Dialer node should have no connected peers")
-	receiverPeerCount, err := receiverNode.PeerCount()
-	require.NoError(t, err)
-	require.True(t, receiverPeerCount == 0, "Receiver node should have no connected peers")
-	// Dial
-	err = dialerNode.DialPeer(receiverMultiaddr[0])
-	require.NoError(t, err)
-	time.Sleep(1 * time.Second)
-	// Check that both nodes now have one connected peer
-	dialerPeerCount, err = dialerNode.PeerCount()
-	require.NoError(t, err)
-	require.True(t, dialerPeerCount == 1, "Dialer node should have 1 peer")
-	receiverPeerCount, err = receiverNode.PeerCount()
-	require.NoError(t, err)
-	require.True(t, receiverPeerCount == 1, "Receiver node should have 1 peer")
-	// Stop nodes
-	require.NoError(t, dialerNode.Stop())
-	require.NoError(t, receiverNode.Stop())
-}
 
 func TestPeerExchange(t *testing.T) {
 	logger, err := zap.NewDevelopment()
@@ -203,4 +144,92 @@ func TestPeerExchange(t *testing.T) {
 	require.NoError(t, pxServerNode.Stop())
 	require.NoError(t, discV5Node.Stop())
 
+}
+
+func TestDnsDiscover(t *testing.T) {
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+
+	nameserver := "8.8.8.8"
+	nodeWakuConfig := WakuConfig{
+		EnableRelay:   true,
+		LogLevel:      "DEBUG",
+		ClusterID:     16,
+		Shards:        []uint16{64},
+		Discv5UdpPort: 9040,
+		TcpPort:       60040,
+	}
+	node, err := New(&nodeWakuConfig, logger.Named("node"))
+	require.NoError(t, err)
+	require.NoError(t, node.Start())
+	time.Sleep(1 * time.Second)
+	sampleEnrTree := "enrtree://AMOJVZX4V6EXP7NTJPMAYJYST2QP6AJXYW76IU6VGJS7UVSNDYZG4@boot.prod.status.nodes.status.im"
+
+	ctx, cancel := context.WithTimeout(context.TODO(), requestTimeout)
+	defer cancel()
+	res, err := node.node.DnsDiscovery(ctx, sampleEnrTree, nameserver)
+	require.NoError(t, err)
+	require.True(t, len(res) > 1, "multiple nodes should be returned from the DNS Discovery query")
+	// Stop nodes
+	require.NoError(t, node.Stop())
+}
+
+func TestDial(t *testing.T) {
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+
+	// start node that will initiate the dial
+	dialerNodeWakuConfig := WakuConfig{
+		EnableRelay:     true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   9020,
+		TcpPort:         60020,
+	}
+
+	dialerNode, err := New(&dialerNodeWakuConfig, logger.Named("dialerNode"))
+	require.NoError(t, err)
+	require.NoError(t, dialerNode.Start())
+	time.Sleep(1 * time.Second)
+
+	// start node that will receive the dial
+	receiverNodeWakuConfig := WakuConfig{
+		EnableRelay:     true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   9021,
+		TcpPort:         60021,
+	}
+	receiverNode, err := New(&receiverNodeWakuConfig, logger.Named("receiverNode"))
+	require.NoError(t, err)
+	require.NoError(t, receiverNode.Start())
+	time.Sleep(1 * time.Second)
+	receiverMultiaddr, err := receiverNode.node.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, receiverMultiaddr)
+	// Check that both nodes start with no connected peers
+	dialerPeerCount, err := dialerNode.PeerCount()
+	require.NoError(t, err)
+	require.True(t, dialerPeerCount == 0, "Dialer node should have no connected peers")
+	receiverPeerCount, err := receiverNode.PeerCount()
+	require.NoError(t, err)
+	require.True(t, receiverPeerCount == 0, "Receiver node should have no connected peers")
+	// Dial
+	err = dialerNode.DialPeer(receiverMultiaddr[0])
+	require.NoError(t, err)
+	time.Sleep(1 * time.Second)
+	// Check that both nodes now have one connected peer
+	dialerPeerCount, err = dialerNode.PeerCount()
+	require.NoError(t, err)
+	require.True(t, dialerPeerCount == 1, "Dialer node should have 1 peer")
+	receiverPeerCount, err = receiverNode.PeerCount()
+	require.NoError(t, err)
+	require.True(t, receiverPeerCount == 1, "Receiver node should have 1 peer")
+	// Stop nodes
+	require.NoError(t, dialerNode.Stop())
+	require.NoError(t, receiverNode.Stop())
 }

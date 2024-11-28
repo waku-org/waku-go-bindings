@@ -325,7 +325,6 @@ import (
 	libp2pproto "github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/waku-org/go-waku/waku/v2/protocol/pb"
-	"github.com/waku-org/go-waku/waku/v2/protocol/relay"
 	storepb "github.com/waku-org/go-waku/waku/v2/protocol/store/pb"
 	"github.com/waku-org/go-waku/waku/v2/utils"
 	"go.uber.org/zap"
@@ -413,10 +412,10 @@ func (w *Waku) DialPeer(address multiaddr.Multiaddr) error {
 	return w.node.Connect(ctx, address)
 }
 
-func (w *Waku) DialPeerByID(peerID peer.ID) error {
+func (w *Waku) DialPeerByID(peerID peer.ID, protocol libp2pproto.ID) error {
 	ctx, cancel := context.WithTimeout(w.ctx, requestTimeout)
 	defer cancel()
-	return w.node.DialPeerByID(ctx, peerID, relay.WakuRelayID_v200)
+	return w.node.DialPeerByID(ctx, peerID, protocol)
 }
 
 func (w *Waku) DropPeer(peerID peer.ID) error {

@@ -4,11 +4,14 @@
 package wakuv2
 
 import (
+	"errors"
+	"slices"
 	"testing"
 	"time"
 
 	"go.uber.org/zap"
 
+	"github.com/cenkalti/backoff/v3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,4 +73,134 @@ func TestDial(t *testing.T) {
 	// Stop nodes
 	require.NoError(t, dialerNode.Stop())
 	require.NoError(t, receiverNode.Stop())
+}
+
+func TestPeerExchange(t *testing.T) {
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+
+	// start node that will be discovered by PeerExchange
+	discV5NodeWakuConfig := WakuConfig{
+		EnableRelay:     true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: true,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		PeerExchange:    false,
+		Discv5UdpPort:   9001,
+		TcpPort:         60010,
+	}
+
+	discV5Node, err := New(&discV5NodeWakuConfig, logger.Named("discV5Node"))
+	require.NoError(t, err)
+	require.NoError(t, discV5Node.Start())
+
+	time.Sleep(1 * time.Second)
+
+	discV5NodePeerId, err := discV5Node.node.PeerID()
+	require.NoError(t, err)
+
+	discv5NodeEnr, err := discV5Node.node.ENR()
+	require.NoError(t, err)
+
+	// start node which serves as PeerExchange server
+	pxServerWakuConfig := WakuConfig{
+		EnableRelay:          true,
+		LogLevel:             "DEBUG",
+		Discv5Discovery:      true,
+		ClusterID:            16,
+		Shards:               []uint16{64},
+		PeerExchange:         true,
+		Discv5UdpPort:        9000,
+		Discv5BootstrapNodes: []string{discv5NodeEnr.String()},
+		TcpPort:              60011,
+	}
+
+	pxServerNode, err := New(&pxServerWakuConfig, logger.Named("pxServerNode"))
+	require.NoError(t, err)
+	require.NoError(t, pxServerNode.Start())
+
+	// Adding an extra second to make sure PX cache is not empty
+	time.Sleep(2 * time.Second)
+
+	serverNodeMa, err := pxServerNode.node.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, serverNodeMa)
+
+	// Sanity check, not great, but it's probably helpful
+	options := func(b *backoff.ExponentialBackOff) {
+		b.MaxElapsedTime = 30 * time.Second
+	}
+
+	// Check that pxServerNode has discV5Node in its Peer Store
+	err = RetryWithBackOff(func() error {
+		peers, err := pxServerNode.node.GetPeerIDsFromPeerStore()
+
+		if err != nil {
+			return err
+		}
+
+		if slices.Contains(peers, discV5NodePeerId) {
+			return nil
+		}
+
+		return errors.New("pxServer is missing the discv5 node in its peer store")
+	}, options)
+	require.NoError(t, err)
+
+	// start light node which uses PeerExchange to discover peers
+	pxClientWakuConfig := WakuConfig{
+		EnableRelay:      false,
+		LogLevel:         "DEBUG",
+		Discv5Discovery:  false,
+		ClusterID:        16,
+		Shards:           []uint16{64},
+		PeerExchange:     true,
+		Discv5UdpPort:    9002,
+		TcpPort:          60012,
+		PeerExchangeNode: serverNodeMa[0].String(),
+	}
+
+	lightNode, err := New(&pxClientWakuConfig, logger.Named("lightNode"))
+	require.NoError(t, err)
+	require.NoError(t, lightNode.Start())
+
+	time.Sleep(1 * time.Second)
+
+	pxServerPeerId, err := pxServerNode.node.PeerID()
+	require.NoError(t, err)
+
+	// Check that the light node discovered the discV5Node and has both nodes in its peer store
+	err = RetryWithBackOff(func() error {
+		peers, err := lightNode.node.GetPeerIDsFromPeerStore()
+		if err != nil {
+			return err
+		}
+
+		if slices.Contains(peers, discV5NodePeerId) && slices.Contains(peers, pxServerPeerId) {
+			return nil
+		}
+		return errors.New("lightnode is missing peers")
+	}, options)
+	require.NoError(t, err)
+
+	// Now perform the PX request manually to see if it also works
+	err = RetryWithBackOff(func() error {
+		numPeersReceived, err := lightNode.node.PeerExchangeRequest(1)
+		if err != nil {
+			return err
+		}
+
+		if numPeersReceived == 1 {
+			return nil
+		}
+		return errors.New("Peer Exchange is not returning peers")
+	}, options)
+	require.NoError(t, err)
+
+	// Stop nodes
+	require.NoError(t, lightNode.Stop())
+	require.NoError(t, pxServerNode.Stop())
+	require.NoError(t, discV5Node.Stop())
+
 }

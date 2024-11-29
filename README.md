@@ -12,7 +12,7 @@ Follow these steps to install and set up the module:
 
 1. Retrieve the module using `go get`:
    ```
-   go get -u github.com/waku-org/waku-go-bindings@feat-go-bindings
+   go get -u github.com/waku-org/waku-go-bindings
    ```
 2. Navigate to the module's directory:
    ```

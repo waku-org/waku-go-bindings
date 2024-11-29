@@ -1,4 +1,4 @@
-# Makefile for Go project with Waku library preparation
+# Makefile for Waku Go Bindings
 
 # Directories
 THIRD_PARTY_DIR := third_party
@@ -26,9 +26,9 @@ prepare:
 	@echo "Building libwaku..."
 	@cd $(NWAKU_DIR) && make libwaku
 
-# Build Go project (replace with your actual build command)
+# Build Waku Go Bindings
 build: prepare
-	@echo "Building Go project..."
+	@echo "Building Waku Go Bindings..."
 	go build ./wakuv2/...
 
 # Clean up generated files

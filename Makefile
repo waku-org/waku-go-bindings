@@ -29,7 +29,7 @@ prepare:
 # Build Waku Go Bindings
 build: prepare
 	@echo "Building Waku Go Bindings..."
-	go build ./wakuv2/...
+	go build ./waku/...
 
 # Clean up generated files
 clean:

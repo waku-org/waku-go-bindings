@@ -1,4 +1,4 @@
-package wakuv2
+package waku
 
 /*
 	#cgo LDFLAGS: -L../third_party/nwaku/build/ -lnegentropy -lwaku
@@ -375,7 +375,7 @@ func (w *Waku) Start() error {
 		return err
 	}
 
-	w.logger.Info("WakuV2 PeerID", zap.Stringer("id", peerID))
+	w.logger.Info("Waku PeerID", zap.Stringer("id", peerID))
 
 	return nil
 }
@@ -504,7 +504,7 @@ func newWakuNode(ctx context.Context, config *WakuConfig) (*WakuNode, error) {
 	return n, nil
 }
 
-// New creates a WakuV2 client ready to communicate through the LibP2P network.
+// New creates a Waku client ready to communicate through the LibP2P network.
 func New(nwakuCfg *WakuConfig, logger *zap.Logger) (*Waku, error) {
 	var err error
 	if logger == nil {
@@ -514,7 +514,7 @@ func New(nwakuCfg *WakuConfig, logger *zap.Logger) (*Waku, error) {
 		}
 	}
 
-	logger.Info("starting wakuv2 with config", zap.Any("nwakuCfg", nwakuCfg))
+	logger.Info("starting Waku with config", zap.Any("nwakuCfg", nwakuCfg))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wakunode, err := newWakuNode(ctx, nwakuCfg)

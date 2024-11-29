@@ -1,4 +1,4 @@
-package wakuv2
+package waku
 
 import (
 	"context"
@@ -26,7 +26,7 @@ import (
 // 	--discv5-discovery=true --cluster-id=16 --log-level=DEBUG --shard=64 --tcp-port=61000 \
 // 	--nat=extip:${IP_ADDRESS} --discv5-udp-port=8000 --rest-address=0.0.0.0 --store --rest-port=8646
 
-func TestBasicWakuV2(t *testing.T) {
+func TestBasicWaku(t *testing.T) {
 	extNodeRestPort := 8646
 	storeNodeInfo, err := GetNwakuInfo(nil, &extNodeRestPort)
 	require.NoError(t, err)

@@ -402,6 +402,10 @@ func (w *Waku) PeerCount() (int, error) {
 	return w.node.GetNumConnectedPeers()
 }
 
+func (w *Waku) ListenAddresses() ([]multiaddr.Multiaddr, error) {
+	return w.node.ListenAddresses()
+}
+
 func (w *Waku) DialPeer(address multiaddr.Multiaddr) error {
 	// Using WakuConnect so it matches the go-waku's behavior and terminology
 	ctx, cancel := context.WithTimeout(w.ctx, requestTimeout)

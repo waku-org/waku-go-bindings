@@ -225,7 +225,7 @@ func TestPeerExchange(t *testing.T) {
 	// Adding an extra second to make sure PX cache is not empty
 	time.Sleep(2 * time.Second)
 
-	serverNodeMa, err := pxServerNode.node.ListenAddresses()
+	serverNodeMa, err := pxServerNode.ListenAddresses()
 	require.NoError(t, err)
 	require.NotNil(t, serverNodeMa)
 
@@ -369,7 +369,7 @@ func TestDial(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, receiverNode.Start())
 	time.Sleep(1 * time.Second)
-	receiverMultiaddr, err := receiverNode.node.ListenAddresses()
+	receiverMultiaddr, err := receiverNode.ListenAddresses()
 	require.NoError(t, err)
 	require.NotNil(t, receiverMultiaddr)
 	// Check that both nodes start with no connected peers

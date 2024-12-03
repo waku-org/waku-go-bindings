@@ -16,7 +16,7 @@ import (
 	"github.com/waku-org/go-waku/waku/v2/protocol/store"
 )
 
-// In order to run these tests, you must run an nwaku node
+// In order to run this test, you must run an nwaku node
 //
 // Using Docker:
 //

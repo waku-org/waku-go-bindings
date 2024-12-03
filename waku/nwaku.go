@@ -227,7 +227,7 @@ package waku
 		WAKU_CALL (waku_ping_peer(ctx, peerAddr, timeoutMs, (WakuCallBack) callback, resp) );
 	}
 
-	static void cGoWakuListPeersInMesh(void* ctx, char* pubSubTopic, void* resp) {
+	static void cGoWakuGetNumPeersInMesh(void* ctx, char* pubSubTopic, void* resp) {
 		WAKU_CALL (waku_relay_get_num_peers_in_mesh(ctx, pubSubTopic, (WakuCallBack) callback, resp) );
 	}
 
@@ -390,8 +390,6 @@ func (w *Waku) Stop() error {
 		return err
 	}
 
-	// w.wg.Wait()
-
 	w.ctx = nil
 	w.cancel = nil
 
@@ -463,7 +461,7 @@ const (
 	requestTypeDialPeerByID
 	requestTypeListenAddresses
 	requestTypeENR
-	requestTypeListPeersInMesh
+	requestTypeGetNumPeersInMesh
 	requestTypeGetConnectedPeers
 	requestTypeGetPeerIDsFromPeerStore
 	requestTypeGetPeerIDsByProtocol
@@ -601,8 +599,8 @@ func (n *WakuNode) processLoop(ctx context.Context) {
 		case requestTypeENR:
 			enr, err := n.enr()
 			req.responseCh <- response{value: enr, err: err}
-		case requestTypeListPeersInMesh:
-			numPeers, err := n.listPeersInMesh(req.input.(string))
+		case requestTypeGetNumPeersInMesh:
+			numPeers, err := n.getNumPeersInMesh(req.input.(string))
 			req.responseCh <- response{value: numPeers, err: err}
 		case requestTypeGetConnectedPeers:
 			peers, err := n.getConnectedPeers()
@@ -1065,24 +1063,24 @@ func (n *WakuNode) enr() (*enode.Node, error) {
 	return nil, errors.New(errMsg)
 }
 
-func (n *WakuNode) listPeersInMesh(pubsubTopic string) (int, error) {
+func (n *WakuNode) getNumPeersInMesh(pubsubTopic string) (int, error) {
 	var resp = C.allocResp()
 	var cPubsubTopic = C.CString(pubsubTopic)
 	defer C.freeResp(resp)
 	defer C.free(unsafe.Pointer(cPubsubTopic))
 
-	C.cGoWakuListPeersInMesh(n.wakuCtx, cPubsubTopic, resp)
+	C.cGoWakuGetNumPeersInMesh(n.wakuCtx, cPubsubTopic, resp)
 
 	if C.getRet(resp) == C.RET_OK {
 		numPeersStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
 		numPeers, err := strconv.Atoi(numPeersStr)
 		if err != nil {
-			errMsg := "ListPeersInMesh - error converting string to int: " + err.Error()
+			errMsg := "GetNumPeersInMesh - error converting string to int: " + err.Error()
 			return 0, errors.New(errMsg)
 		}
 		return numPeers, nil
 	}
-	errMsg := "error ListPeersInMesh: " +
+	errMsg := "error GetNumPeersInMesh: " +
 		C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
 	return 0, errors.New(errMsg)
 }
@@ -1342,8 +1340,8 @@ func (n *WakuNode) ENR() (*enode.Node, error) {
 	return response.(*enode.Node), nil
 }
 
-func (n *WakuNode) ListPeersInMesh(pubsubTopic string) (int, error) {
-	response, err := n.postTask(requestTypeListPeersInMesh, pubsubTopic)
+func (n *WakuNode) GetNumPeersInMesh(pubsubTopic string) (int, error) {
+	response, err := n.postTask(requestTypeGetNumPeersInMesh, pubsubTopic)
 	if err != nil {
 		return 0, err
 	}

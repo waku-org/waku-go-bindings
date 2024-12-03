@@ -31,6 +31,8 @@ func TestBasicWaku(t *testing.T) {
 	storeNodeInfo, err := GetNwakuInfo(nil, &extNodeRestPort)
 	require.NoError(t, err)
 
+	// ctx := context.Background()
+
 	nwakuConfig := WakuConfig{
 		Port:            30303,
 		NodeKey:         "11d0dcea28e86f81937a3bd1163473c7fbc0a0db54fd72914849bc47bdf78710",
@@ -77,11 +79,11 @@ func TestBasicWaku(t *testing.T) {
 	storeNode, err := peer.AddrInfoFromString(storeNodeInfo.ListenAddresses[0])
 	require.NoError(t, err)
 
-	/* for i := 0; i <= 100; i++ {
-		time.Sleep(2 * time.Second)
-	}
+	/*
+		w.node.DialPeer(ctx, storeNode.Addrs[0], "")
 
-	w.StorenodeCycle.SetStorenodeConfigProvider(newTestStorenodeConfigProvider(*storeNode)) */
+		w.StorenodeCycle.SetStorenodeConfigProvider(newTestStorenodeConfigProvider(*storeNode))
+	*/
 
 	// Check that we are indeed connected to the store node
 	connectedStoreNodes, err := w.node.GetPeerIDsByProtocol(store.StoreQueryID_v300)

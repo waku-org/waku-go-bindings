@@ -14,12 +14,12 @@ package waku
 		int ret;
 		char* msg;
 		size_t len;
-		void* wg;
+		void* ffiWg;
 	} Resp;
 
 	static void* allocResp(void* wg) {
 		Resp* r = calloc(1, sizeof(Resp));
-		r->wg = wg;
+		r->ffiWg = wg;
 		return r;
 	}
 
@@ -430,7 +430,7 @@ func GoCallback(ret C.int, msg *C.char, len C.size_t, resp unsafe.Pointer) {
 		m.ret = ret
 		m.msg = msg
 		m.len = len
-		wg := (*sync.WaitGroup)(m.wg)
+		wg := (*sync.WaitGroup)(m.ffiWg)
 		wg.Done()
 	}
 }

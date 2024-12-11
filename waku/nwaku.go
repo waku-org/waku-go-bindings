@@ -446,6 +446,11 @@ func GoCallback(ret C.int, msg *C.char, len C.size_t, resp unsafe.Pointer) {
 	}
 }
 
+type MessageData struct {
+	Msg         pb.WakuMessage
+	PubsubTopic string
+}
+
 // WakuNode represents an instance of an nwaku node
 type WakuNode struct {
 	wakuCtx unsafe.Pointer

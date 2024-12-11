@@ -322,6 +322,7 @@ import (
 	"github.com/waku-org/go-waku/waku/v2/protocol/pb"
 	storepb "github.com/waku-org/go-waku/waku/v2/protocol/store/pb"
 	"github.com/waku-org/go-waku/waku/v2/utils"
+	"github.com/waku-org/waku-go-bindings/waku/common"
 	"go.uber.org/zap"
 )
 
@@ -444,17 +445,12 @@ func GoCallback(ret C.int, msg *C.char, len C.size_t, resp unsafe.Pointer) {
 	}
 }
 
-type MessageData struct {
-	Msg         pb.WakuMessage
-	PubsubTopic string
-}
-
 // WakuNode represents an instance of an nwaku node
 type WakuNode struct {
 	wakuCtx unsafe.Pointer
 	logger  *zap.Logger
 	cancel  context.CancelFunc
-	MsgChan chan MessageData
+	MsgChan chan common.Envelope
 }
 
 func newWakuNode(ctx context.Context, config *WakuConfig, logger *zap.Logger) (*WakuNode, error) {
@@ -498,7 +494,7 @@ func newWakuNode(ctx context.Context, config *WakuConfig, logger *zap.Logger) (*
 
 	wg.Add(1)
 	n.wakuCtx = C.cGoWakuNew(cJsonConfig, resp)
-	n.MsgChan = make(chan MessageData, 100)
+	n.MsgChan = make(chan common.Envelope, 100)
 	n.logger = logger.Named("nwaku")
 	wg.Wait()
 

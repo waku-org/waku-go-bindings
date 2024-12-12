@@ -314,6 +314,7 @@ import (
 	"unsafe"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/libp2p/go-libp2p/core/peer"
 	libp2pproto "github.com/libp2p/go-libp2p/core/protocol"
@@ -321,6 +322,7 @@ import (
 	"github.com/waku-org/go-waku/waku/v2/protocol/pb"
 	storepb "github.com/waku-org/go-waku/waku/v2/protocol/store/pb"
 	"github.com/waku-org/go-waku/waku/v2/utils"
+	"github.com/waku-org/waku-go-bindings/waku/common"
 	"go.uber.org/zap"
 )
 
@@ -422,6 +424,13 @@ func (w *Waku) DialPeer(address multiaddr.Multiaddr) error {
 	return w.node.Connect(ctx, address)
 }
 
+// TODO: change pubsub topic to shard notation everywhere
+func (w *Waku) RelayPublish(message *pb.WakuMessage, pubsubTopic string) (pb.MessageHash, error) {
+	ctx, cancel := context.WithTimeout(w.ctx, requestTimeout)
+	defer cancel()
+	return w.node.RelayPublish(ctx, message, pubsubTopic)
+}
+
 func (w *Waku) DialPeerByID(peerID peer.ID, protocol libp2pproto.ID) error {
 	ctx, cancel := context.WithTimeout(w.ctx, requestTimeout)
 	defer cancel()
@@ -430,11 +439,6 @@ func (w *Waku) DialPeerByID(peerID peer.ID, protocol libp2pproto.ID) error {
 
 func (w *Waku) DropPeer(peerID peer.ID) error {
 	return w.node.DisconnectPeerByID(peerID)
-}
-
-type response struct {
-	err   error
-	value any
 }
 
 //export GoCallback
@@ -452,10 +456,12 @@ func GoCallback(ret C.int, msg *C.char, len C.size_t, resp unsafe.Pointer) {
 // WakuNode represents an instance of an nwaku node
 type WakuNode struct {
 	wakuCtx unsafe.Pointer
+	logger  *zap.Logger
 	cancel  context.CancelFunc
+	MsgChan chan common.Envelope
 }
 
-func newWakuNode(ctx context.Context, config *WakuConfig) (*WakuNode, error) {
+func newWakuNode(ctx context.Context, config *WakuConfig, logger *zap.Logger) (*WakuNode, error) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	n := &WakuNode{
@@ -496,6 +502,8 @@ func newWakuNode(ctx context.Context, config *WakuConfig) (*WakuNode, error) {
 
 	wg.Add(1)
 	n.wakuCtx = C.cGoWakuNew(cJsonConfig, resp)
+	n.MsgChan = make(chan common.Envelope, 100)
+	n.logger = logger.Named("nwaku")
 	wg.Wait()
 
 	// Notice that the events for self node are handled by the 'MyEventCallback' method
@@ -517,7 +525,7 @@ func New(nwakuCfg *WakuConfig, logger *zap.Logger) (*Waku, error) {
 	logger.Info("starting Waku with config", zap.Any("nwakuCfg", nwakuCfg))
 
 	ctx, cancel := context.WithCancel(context.Background())
-	wakunode, err := newWakuNode(ctx, nwakuCfg)
+	wakunode, err := newWakuNode(ctx, nwakuCfg, logger)
 	if err != nil {
 		cancel()
 		return nil, err
@@ -532,12 +540,70 @@ func New(nwakuCfg *WakuConfig, logger *zap.Logger) (*Waku, error) {
 	}, nil
 }
 
+// The event callback sends back the node's ctx to know to which
+// node is the event being emited for. Since we only have a global
+// callback in the go side, We register all the nodes that we create
+// so we can later obtain which instance of `WakuNode` is should
+// be invoked depending on the ctx received
+
+var nodeRegistry map[unsafe.Pointer]*WakuNode
+
+func init() {
+	nodeRegistry = make(map[unsafe.Pointer]*WakuNode)
+}
+
+func registerNode(node *WakuNode) {
+	_, ok := nodeRegistry[node.wakuCtx]
+	if !ok {
+		nodeRegistry[node.wakuCtx] = node
+	}
+}
+
+func unregisterNode(node *WakuNode) {
+	delete(nodeRegistry, node.wakuCtx)
+}
+
 //export globalEventCallback
 func globalEventCallback(callerRet C.int, msg *C.char, len C.size_t, userData unsafe.Pointer) {
-	// This is shared among all Golang instances
-	// TODO-nwaku
-	// self := Waku{wakuCtx: userData}
-	// self.MyEventCallback(callerRet, msg, len)
+	if callerRet == C.RET_OK {
+		eventStr := C.GoStringN(msg, C.int(len))
+		node, ok := nodeRegistry[userData]
+		if ok {
+			node.OnEvent(eventStr)
+		}
+	} else {
+		errMsgField := zap.Skip()
+		if len != 0 {
+			errMsgField = zap.String("error", C.GoStringN(msg, C.int(len)))
+		}
+		log.Error("globalEventCallback retCode not ok", zap.Int("retCode", int(callerRet)), errMsgField)
+	}
+}
+
+type jsonEvent struct {
+	EventType string `json:"eventType"`
+}
+
+func (n *WakuNode) OnEvent(eventStr string) {
+	jsonEvent := jsonEvent{}
+	err := json.Unmarshal([]byte(eventStr), &jsonEvent)
+	if err != nil {
+		n.logger.Error("could not unmarshal nwaku event string", zap.Error(err))
+		return
+	}
+
+	switch jsonEvent.EventType {
+	case "message":
+		n.parseMessageEvent(eventStr)
+	}
+}
+
+func (n *WakuNode) parseMessageEvent(eventStr string) {
+	envelope, err := common.NewEnvelope(eventStr)
+	if err != nil {
+		n.logger.Error("could not parse message", zap.Error(err))
+	}
+	n.MsgChan <- envelope
 }
 
 func (n *WakuNode) GetNumConnectedRelayPeers(optPubsubTopic ...string) (int, error) {
@@ -903,6 +969,7 @@ func (n *WakuNode) Start() error {
 	C.cGoWakuStart(n.wakuCtx, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
+		registerNode(n)
 		return nil
 	}
 
@@ -920,6 +987,7 @@ func (n *WakuNode) Stop() error {
 	C.cGoWakuStop(n.wakuCtx, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
+		unregisterNode(n)
 		return nil
 	}
 
@@ -1172,4 +1240,8 @@ func (n *WakuNode) GetNumConnectedPeers() (int, error) {
 		return 0, err
 	}
 	return len(peers), nil
+}
+
+func FormatWakuRelayTopic(clusterId uint16, shard uint16) string {
+	return fmt.Sprintf("/waku/2/rs/%d/%d", clusterId, shard)
 }

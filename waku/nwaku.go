@@ -424,6 +424,11 @@ func (w *Waku) DialPeer(address multiaddr.Multiaddr) error {
 	return w.node.Connect(ctx, address)
 }
 
+// TODO: change pubsub topic to shard notation everywhere
+func (w *Waku) RelayPublish(ctx context.Context, message *pb.WakuMessage, pubsubTopic string) (pb.MessageHash, error) {
+	return w.node.RelayPublish(ctx, message, pubsubTopic)
+}
+
 func (w *Waku) DialPeerByID(peerID peer.ID, protocol libp2pproto.ID) error {
 	ctx, cancel := context.WithTimeout(w.ctx, requestTimeout)
 	defer cancel()
@@ -1240,4 +1245,8 @@ func getContextTimeoutMilliseconds(ctx context.Context) int {
 		return int(time.Until(deadline).Milliseconds())
 	}
 	return 0
+}
+
+func FormatWakuRelayTopic(clusterId uint16, shard uint16) string {
+	return fmt.Sprintf("/waku/2/rs/%d/%d", clusterId, shard)
 }

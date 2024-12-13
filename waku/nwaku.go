@@ -327,6 +327,7 @@ import (
 )
 
 const requestTimeout = 30 * time.Second
+const MsgChanBufferSize = 100
 
 type WakuConfig struct {
 	Host                        string   `json:"host,omitempty"`
@@ -494,7 +495,7 @@ func newWakuNode(ctx context.Context, config *WakuConfig, logger *zap.Logger) (*
 
 	wg.Add(1)
 	n.wakuCtx = C.cGoWakuNew(cJsonConfig, resp)
-	n.MsgChan = make(chan common.Envelope, 100)
+	n.MsgChan = make(chan common.Envelope, MsgChanBufferSize)
 	n.logger = logger.Named("nwaku")
 	wg.Wait()
 

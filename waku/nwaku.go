@@ -560,7 +560,7 @@ func unregisterNode(node *WakuNode) {
 func globalEventCallback(callerRet C.int, msg *C.char, len C.size_t, userData unsafe.Pointer) {
 	if callerRet == C.RET_OK {
 		eventStr := C.GoStringN(msg, C.int(len))
-		node, ok := nodeRegistry[userData]
+		node, ok := nodeRegistry[userData] // userData contains node's ctx
 		if ok {
 			node.OnEvent(eventStr)
 		}

@@ -425,9 +425,7 @@ func (w *Waku) DialPeer(address multiaddr.Multiaddr) error {
 }
 
 // TODO: change pubsub topic to shard notation everywhere
-func (w *Waku) RelayPublish(message *pb.WakuMessage, pubsubTopic string) (pb.MessageHash, error) {
-	ctx, cancel := context.WithTimeout(w.ctx, requestTimeout)
-	defer cancel()
+func (w *Waku) RelayPublish(ctx context.Context, message *pb.WakuMessage, pubsubTopic string) (pb.MessageHash, error) {
 	return w.node.RelayPublish(ctx, message, pubsubTopic)
 }
 

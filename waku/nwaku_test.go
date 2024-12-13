@@ -457,7 +457,9 @@ func TestRelay(t *testing.T) {
 	}
 	// send message
 	pubsubTopic := FormatWakuRelayTopic(senderNodeWakuConfig.ClusterID, senderNodeWakuConfig.Shards[0])
-	senderNode.RelayPublish(message, pubsubTopic)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	senderNode.RelayPublish(ctx, message, pubsubTopic)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)

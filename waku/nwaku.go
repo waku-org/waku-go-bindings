@@ -506,6 +506,7 @@ func newWakuNode(ctx context.Context, config *WakuConfig, logger *zap.Logger) (*
 
 	// Notice that the events for self node are handled by the 'MyEventCallback' method
 	C.cGoWakuSetEventCallback(n.wakuCtx)
+	registerNode(n)
 
 	return n, nil
 }
@@ -583,6 +584,7 @@ type jsonEvent struct {
 }
 
 func (n *WakuNode) OnEvent(eventStr string) {
+	fmt.Println("---------- GABRIEL received event: ", eventStr)
 	jsonEvent := jsonEvent{}
 	err := json.Unmarshal([]byte(eventStr), &jsonEvent)
 	if err != nil {
@@ -593,6 +595,8 @@ func (n *WakuNode) OnEvent(eventStr string) {
 	switch jsonEvent.EventType {
 	case "message":
 		n.parseMessageEvent(eventStr)
+	case "relay_topic_health_change":
+		fmt.Println("Received topic health change event")
 	}
 }
 
@@ -965,7 +969,6 @@ func (n *WakuNode) Start() error {
 	C.cGoWakuStart(n.wakuCtx, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
-		registerNode(n)
 		return nil
 	}
 

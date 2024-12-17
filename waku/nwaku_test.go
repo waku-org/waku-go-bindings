@@ -103,7 +103,9 @@ func TestBasicWaku(t *testing.T) {
 	require.True(t, isDisconnected, "nwaku should be disconnected from the store node")
 
 	// Re-connect
-	err = w.DialPeer(storeNodeMa)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	err = w.DialPeer(ctx, storeNodeMa)
 	require.NoError(t, err)
 
 	// Check that we are connected again
@@ -384,7 +386,9 @@ func TestDial(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, receiverPeerCount == 0, "Receiver node should have no connected peers")
 	// Dial
-	err = dialerNode.DialPeer(receiverMultiaddr[0])
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	err = dialerNode.DialPeer(ctx, receiverMultiaddr[0])
 	require.NoError(t, err)
 	time.Sleep(1 * time.Second)
 	// Check that both nodes now have one connected peer
@@ -438,7 +442,9 @@ func TestRelay(t *testing.T) {
 	require.NotNil(t, receiverMultiaddr)
 
 	// Dial so they become peers
-	err = senderNode.DialPeer(receiverMultiaddr[0])
+	ctx1, cancel1 := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel1()
+	err = senderNode.DialPeer(ctx1, receiverMultiaddr[0])
 	require.NoError(t, err)
 	time.Sleep(1 * time.Second)
 	// Check that both nodes now have one connected peer
@@ -457,9 +463,9 @@ func TestRelay(t *testing.T) {
 	}
 	// send message
 	pubsubTopic := FormatWakuRelayTopic(senderNodeWakuConfig.ClusterID, senderNodeWakuConfig.Shards[0])
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	defer cancel()
-	senderNode.RelayPublish(ctx, message, pubsubTopic)
+	ctx2, cancel2 := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel2()
+	senderNode.RelayPublish(ctx2, message, pubsubTopic)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)

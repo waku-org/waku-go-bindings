@@ -417,10 +417,8 @@ func (w *Waku) ListenAddresses() ([]multiaddr.Multiaddr, error) {
 	return w.node.ListenAddresses()
 }
 
-func (w *Waku) DialPeer(address multiaddr.Multiaddr) error {
+func (w *Waku) DialPeer(ctx context.Context, address multiaddr.Multiaddr) error {
 	// Using WakuConnect so it matches the go-waku's behavior and terminology
-	ctx, cancel := context.WithTimeout(w.ctx, requestTimeout)
-	defer cancel()
 	return w.node.Connect(ctx, address)
 }
 
@@ -429,9 +427,7 @@ func (w *Waku) RelayPublish(ctx context.Context, message *pb.WakuMessage, pubsub
 	return w.node.RelayPublish(ctx, message, pubsubTopic)
 }
 
-func (w *Waku) DialPeerByID(peerID peer.ID, protocol libp2pproto.ID) error {
-	ctx, cancel := context.WithTimeout(w.ctx, requestTimeout)
-	defer cancel()
+func (w *Waku) DialPeerByID(ctx context.Context, peerID peer.ID, protocol libp2pproto.ID) error {
 	return w.node.DialPeerByID(ctx, peerID, protocol)
 }
 

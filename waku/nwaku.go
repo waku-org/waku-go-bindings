@@ -592,7 +592,6 @@ type topicHealth struct {
 }
 
 func (n *WakuNode) OnEvent(eventStr string) {
-	fmt.Println("---------- GABRIEL received event: ", eventStr)
 	jsonEvent := jsonEvent{}
 	err := json.Unmarshal([]byte(eventStr), &jsonEvent)
 	if err != nil {
@@ -604,7 +603,6 @@ func (n *WakuNode) OnEvent(eventStr string) {
 	case "message":
 		n.parseMessageEvent(eventStr)
 	case "relay_topic_health_change":
-		fmt.Println("Received topic health change event")
 		n.parseTopicHealthChangeEvent(eventStr)
 	}
 }
@@ -624,9 +622,6 @@ func (n *WakuNode) parseTopicHealthChangeEvent(eventStr string) {
 	if err != nil {
 		n.logger.Error("could not parse topic health change", zap.Error(err))
 	}
-
-	fmt.Println("-------- topicHealth.PubsubTopic: ", topicHealth.PubsubTopic)
-	fmt.Println("-------- topicHealth.TopicHealth: ", topicHealth.TopicHealth)
 	n.TopicHealthChan <- topicHealth
 }
 

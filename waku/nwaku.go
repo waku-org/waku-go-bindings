@@ -156,6 +156,15 @@ package waku
 							resp) );
 	}
 
+	static void cGoWakuRelayAddProtectedShard(void* wakuCtx, int clusterId, int shardId, char* publicKey, void* resp) {
+		WAKU_CALL ( waku_relay_add_protected_shard(wakuCtx,
+							clusterId,
+							shardId,
+							publicKey,
+							(WakuCallBack) GoCallback,
+							resp) );
+	}
+
 	static void cGoWakuRelayUnsubscribe(void* wakuCtx, char* pubSubTopic, void* resp) {
 
 		WAKU_CALL ( waku_relay_unsubscribe(wakuCtx,
@@ -303,6 +312,8 @@ package waku
 import "C"
 import (
 	"context"
+	"crypto/ecdsa"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -314,6 +325,7 @@ import (
 	"unsafe"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -713,6 +725,37 @@ func (n *WakuNode) RelaySubscribe(pubsubTopic string) error {
 	}
 
 	errMsg := "error WakuRelaySubscribe: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	return errors.New(errMsg)
+}
+
+func (n *WakuNode) RelayAddProtectedShard(clusterId uint16, shardId uint16, pubkey *ecdsa.PublicKey) error {
+	if pubkey == nil {
+		return nil // Nothing to do here
+	}
+
+	keyHexStr := hex.EncodeToString(crypto.FromECDSAPub(pubkey))
+
+	wg := sync.WaitGroup{}
+
+	var resp = C.allocResp(unsafe.Pointer(&wg))
+	var cPublicKey = C.CString(keyHexStr)
+
+	defer C.freeResp(resp)
+	defer C.free(unsafe.Pointer(cPublicKey))
+
+	if n.wakuCtx == nil {
+		return errors.New("wakuCtx is nil")
+	}
+
+	wg.Add(1)
+	C.cGoWakuRelayAddProtectedShard(n.wakuCtx, C.int(clusterId), C.int(shardId), cPublicKey, resp)
+	wg.Wait()
+
+	if C.getRet(resp) == C.RET_OK {
+		return nil
+	}
+
+	errMsg := "error WakuRelayAddProtectedShard: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
 	return errors.New(errMsg)
 }
 

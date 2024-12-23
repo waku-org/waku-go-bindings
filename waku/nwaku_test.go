@@ -352,6 +352,7 @@ func TestDial(t *testing.T) {
 		Shards:          []uint16{64},
 		Discv5UdpPort:   9030,
 		TcpPort:         60030,
+		MetricsLogging:  true,
 	}
 
 	dialerNode, err := New(&dialerNodeWakuConfig, logger.Named("dialerNode"))
@@ -368,6 +369,7 @@ func TestDial(t *testing.T) {
 		Shards:          []uint16{64},
 		Discv5UdpPort:   9031,
 		TcpPort:         60031,
+		MetricsLogging:  true,
 	}
 	receiverNode, err := New(&receiverNodeWakuConfig, logger.Named("receiverNode"))
 	require.NoError(t, err)

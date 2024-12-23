@@ -360,6 +360,7 @@ type WakuConfig struct {
 	PeerExchange                bool     `json:"peerExchange,omitempty"`
 	PeerExchangeNode            string   `json:"peerExchangeNode,omitempty"`
 	TcpPort                     int      `json:"tcpPort,omitempty"`
+	MetricsLogging              bool     `json:"metricsLogging,omitempty"`
 }
 
 // Waku represents a dark communication interface through the Ethereum

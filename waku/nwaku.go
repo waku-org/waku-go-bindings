@@ -383,21 +383,21 @@ func (rlc RateLimitsConfig) MarshalJSON() ([]byte, error) {
 	return json.Marshal(output)
 }
 
-type RateLimitUnit string
+type RateLimitTimeUnit string
 
-const Hour RateLimitUnit = "h"
-const Minute RateLimitUnit = "m"
-const Second RateLimitUnit = "s"
-const Millisecond RateLimitUnit = "ms"
+const Hour RateLimitTimeUnit = "h"
+const Minute RateLimitTimeUnit = "m"
+const Second RateLimitTimeUnit = "s"
+const Millisecond RateLimitTimeUnit = "ms"
 
 type RateLimit struct {
-	Volume int
-	Period int
-	Unit   RateLimitUnit
+	Volume   int               // Number of allowed messages per period
+	Period   int               // Length of each rate-limit period (in TimeUnit)
+	TimeUnit RateLimitTimeUnit // Time unit of the period
 }
 
 func (rl RateLimit) String() string {
-	return fmt.Sprintf("%d/%d%s", rl.Volume, rl.Period, rl.Unit)
+	return fmt.Sprintf("%d/%d%s", rl.Volume, rl.Period, rl.TimeUnit)
 }
 
 func (rl RateLimit) MarshalJSON() ([]byte, error) {

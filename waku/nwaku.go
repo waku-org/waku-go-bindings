@@ -730,7 +730,7 @@ func (n *WakuNode) RelaySubscribe(pubsubTopic string) error {
 
 func (n *WakuNode) RelayAddProtectedShard(clusterId uint16, shardId uint16, pubkey *ecdsa.PublicKey) error {
 	if pubkey == nil {
-		return nil // Nothing to do here
+		return errors.New("error WakuRelayAddProtectedShard: pubkey can't be nil")
 	}
 
 	keyHexStr := hex.EncodeToString(crypto.FromECDSAPub(pubkey))

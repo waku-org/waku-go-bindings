@@ -340,6 +340,7 @@ import (
 
 const requestTimeout = 30 * time.Second
 const MsgChanBufferSize = 100
+const TopicHealthChanBufferSize = 100
 
 type WakuConfig struct {
 	Host                        string           `json:"host,omitempty"`
@@ -503,10 +504,11 @@ func GoCallback(ret C.int, msg *C.char, len C.size_t, resp unsafe.Pointer) {
 
 // WakuNode represents an instance of an nwaku node
 type WakuNode struct {
-	wakuCtx unsafe.Pointer
-	logger  *zap.Logger
-	cancel  context.CancelFunc
-	MsgChan chan common.Envelope
+	wakuCtx         unsafe.Pointer
+	logger          *zap.Logger
+	cancel          context.CancelFunc
+	MsgChan         chan common.Envelope
+	TopicHealthChan chan topicHealth
 }
 
 func newWakuNode(ctx context.Context, config *WakuConfig, logger *zap.Logger) (*WakuNode, error) {
@@ -551,11 +553,13 @@ func newWakuNode(ctx context.Context, config *WakuConfig, logger *zap.Logger) (*
 	wg.Add(1)
 	n.wakuCtx = C.cGoWakuNew(cJsonConfig, resp)
 	n.MsgChan = make(chan common.Envelope, MsgChanBufferSize)
+	n.TopicHealthChan = make(chan topicHealth, TopicHealthChanBufferSize)
 	n.logger = logger.Named("nwaku")
 	wg.Wait()
 
 	// Notice that the events for self node are handled by the 'MyEventCallback' method
 	C.cGoWakuSetEventCallback(n.wakuCtx)
+	registerNode(n)
 
 	return n, nil
 }
@@ -632,6 +636,11 @@ type jsonEvent struct {
 	EventType string `json:"eventType"`
 }
 
+type topicHealth struct {
+	PubsubTopic string `json:"pubsubTopic"`
+	TopicHealth string `json:"topicHealth"`
+}
+
 func (n *WakuNode) OnEvent(eventStr string) {
 	jsonEvent := jsonEvent{}
 	err := json.Unmarshal([]byte(eventStr), &jsonEvent)
@@ -643,6 +652,8 @@ func (n *WakuNode) OnEvent(eventStr string) {
 	switch jsonEvent.EventType {
 	case "message":
 		n.parseMessageEvent(eventStr)
+	case "relay_topic_health_change":
+		n.parseTopicHealthChangeEvent(eventStr)
 	}
 }
 
@@ -652,6 +663,16 @@ func (n *WakuNode) parseMessageEvent(eventStr string) {
 		n.logger.Error("could not parse message", zap.Error(err))
 	}
 	n.MsgChan <- envelope
+}
+
+func (n *WakuNode) parseTopicHealthChangeEvent(eventStr string) {
+
+	topicHealth := topicHealth{}
+	err := json.Unmarshal([]byte(eventStr), &topicHealth)
+	if err != nil {
+		n.logger.Error("could not parse topic health change", zap.Error(err))
+	}
+	n.TopicHealthChan <- topicHealth
 }
 
 func (n *WakuNode) GetNumConnectedRelayPeers(optPubsubTopic ...string) (int, error) {
@@ -1046,7 +1067,6 @@ func (n *WakuNode) Start() error {
 	C.cGoWakuStart(n.wakuCtx, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
-		registerNode(n)
 		return nil
 	}
 

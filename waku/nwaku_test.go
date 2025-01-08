@@ -553,3 +553,89 @@ func TestTopicHealth(t *testing.T) {
 	require.NoError(t, node2.Stop())
 
 }
+
+func TestConnectionChange(t *testing.T) {
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+	clusterId := uint16(16)
+	shardId := uint16(64)
+
+	// start node1
+	wakuConfig1 := WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       clusterId,
+		Shards:          []uint16{shardId},
+		Discv5UdpPort:   9060,
+		TcpPort:         60060,
+	}
+
+	node1, err := New(&wakuConfig1, logger.Named("node1"))
+	require.NoError(t, err)
+	require.NoError(t, node1.Start())
+	time.Sleep(1 * time.Second)
+
+	// start node2
+	wakuConfig2 := WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       clusterId,
+		Shards:          []uint16{shardId},
+		Discv5UdpPort:   9061,
+		TcpPort:         60061,
+	}
+	node2, err := New(&wakuConfig2, logger.Named("node2"))
+	require.NoError(t, err)
+	require.NoError(t, node2.Start())
+	time.Sleep(1 * time.Second)
+	multiaddr2, err := node2.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, multiaddr2)
+
+	// node1 dials node2 so they become peers
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	err = node1.DialPeer(ctx, multiaddr2[0])
+	require.NoError(t, err)
+	time.Sleep(1 * time.Second)
+	// Check that both nodes now have one connected peer
+	peerCount1, err := node1.PeerCount()
+	require.NoError(t, err)
+	require.True(t, peerCount1 == 1, "node1 should have 1 peer")
+	peerCount2, err := node2.PeerCount()
+	require.NoError(t, err)
+	require.True(t, peerCount2 == 1, "node2 should have 1 peer")
+
+	peerId1, err := node1.node.PeerID()
+	require.NoError(t, err)
+
+	// Wait to receive connectionChange event
+	select {
+	case connectionChange := <-node2.node.ConnectionChangeChan:
+		require.NotNil(t, connectionChange, "connectionChange should be updated")
+		require.Equal(t, connectionChange.PeerEvent, "Joined", "connectionChange Joined event should be emitted")
+		require.Equal(t, connectionChange.PeerId, peerId1, "connectionChange event should contain node 1's peerId")
+	case <-time.After(10 * time.Second):
+		t.Fatal("Timeout: No connectionChange event received within 10 seconds")
+	}
+
+	// Disconnect from node1
+	err = node2.node.DisconnectPeerByID(peerId1)
+	require.NoError(t, err)
+
+	// Wait to receive connectionChange event
+	select {
+	case connectionChange := <-node2.node.ConnectionChangeChan:
+		require.NotNil(t, connectionChange, "connectionChange should be updated")
+		require.Equal(t, connectionChange.PeerEvent, "Left", "connectionChange Left event should be emitted")
+		require.Equal(t, connectionChange.PeerId, peerId1, "connectionChange event should contain node 1's peerId")
+	case <-time.After(10 * time.Second):
+		t.Fatal("Timeout: No connectionChange event received within 10 seconds")
+	}
+
+	// Stop nodes
+	require.NoError(t, node1.Stop())
+	require.NoError(t, node2.Stop())
+}

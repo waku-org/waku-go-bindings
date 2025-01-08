@@ -417,79 +417,6 @@ func (rl RateLimit) MarshalJSON() ([]byte, error) {
 	return json.Marshal(rl.String())
 }
 
-// Waku represents a dark communication interface through the Ethereum
-// network, using its very own P2P communication layer.
-type Waku struct {
-	node *WakuNode
-
-	ctx    context.Context
-	cancel context.CancelFunc
-
-	wakuCfg *WakuConfig
-
-	logger *zap.Logger
-}
-
-// Start implements node.Service, starting the background data propagation thread
-// of the Waku protocol.
-func (w *Waku) Start() error {
-	err := w.node.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start nwaku node: %v", err)
-	}
-
-	peerID, err := w.node.PeerID()
-	if err != nil {
-		return err
-	}
-
-	w.logger.Info("Waku PeerID", zap.Stringer("id", peerID))
-
-	return nil
-}
-
-// Stop implements node.Service, stopping the background data propagation thread
-// of the Waku protocol.
-func (w *Waku) Stop() error {
-	w.cancel()
-
-	err := w.node.Stop()
-	if err != nil {
-		return err
-	}
-
-	w.ctx = nil
-	w.cancel = nil
-
-	return nil
-}
-
-func (w *Waku) PeerCount() (int, error) {
-	return w.node.GetNumConnectedPeers()
-}
-
-func (w *Waku) ListenAddresses() ([]multiaddr.Multiaddr, error) {
-	return w.node.ListenAddresses()
-}
-
-func (w *Waku) DialPeer(ctx context.Context, address multiaddr.Multiaddr) error {
-	// Using WakuConnect so it matches the go-waku's behavior and terminology
-	return w.node.Connect(ctx, address)
-}
-
-// TODO: change pubsub topic to shard notation everywhere
-func (w *Waku) RelayPublish(ctx context.Context, message *pb.WakuMessage, pubsubTopic string) (pb.MessageHash, error) {
-	return w.node.RelayPublish(ctx, message, pubsubTopic)
-}
-
-func (w *Waku) DialPeerByID(ctx context.Context, peerID peer.ID, protocol libp2pproto.ID) error {
-	return w.node.DialPeerByID(ctx, peerID, protocol)
-}
-
-func (w *Waku) DropPeer(peerID peer.ID) error {
-	return w.node.DisconnectPeerByID(peerID)
-}
-
 //export GoCallback
 func GoCallback(ret C.int, msg *C.char, len C.size_t, resp unsafe.Pointer) {
 	if resp != nil {
@@ -505,6 +432,7 @@ func GoCallback(ret C.int, msg *C.char, len C.size_t, resp unsafe.Pointer) {
 // WakuNode represents an instance of an nwaku node
 type WakuNode struct {
 	wakuCtx         unsafe.Pointer
+	wakuCfg         *WakuConfig
 	logger          *zap.Logger
 	cancel          context.CancelFunc
 	MsgChan         chan common.Envelope
@@ -515,7 +443,8 @@ func newWakuNode(ctx context.Context, config *WakuConfig, logger *zap.Logger) (*
 	ctx, cancel := context.WithCancel(ctx)
 
 	n := &WakuNode{
-		cancel: cancel,
+		cancel:  cancel,
+		wakuCfg: config,
 	}
 
 	wg := sync.WaitGroup{}
@@ -562,34 +491,6 @@ func newWakuNode(ctx context.Context, config *WakuConfig, logger *zap.Logger) (*
 	registerNode(n)
 
 	return n, nil
-}
-
-// New creates a Waku client ready to communicate through the LibP2P network.
-func New(nwakuCfg *WakuConfig, logger *zap.Logger) (*Waku, error) {
-	var err error
-	if logger == nil {
-		logger, err = zap.NewDevelopment()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	logger.Info("starting Waku with config", zap.Any("nwakuCfg", nwakuCfg))
-
-	ctx, cancel := context.WithCancel(context.Background())
-	wakunode, err := newWakuNode(ctx, nwakuCfg, logger)
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-
-	return &Waku{
-		node:    wakunode,
-		wakuCfg: nwakuCfg,
-		logger:  logger,
-		ctx:     ctx,
-		cancel:  cancel,
-	}, nil
 }
 
 // The event callback sends back the node's ctx to know to which
@@ -658,6 +559,7 @@ func (n *WakuNode) OnEvent(eventStr string) {
 }
 
 func (n *WakuNode) parseMessageEvent(eventStr string) {
+	fmt.Println("----------- got message event: ", eventStr)
 	envelope, err := common.NewEnvelope(eventStr)
 	if err != nil {
 		n.logger.Error("could not parse message", zap.Error(err))

@@ -35,6 +35,9 @@ func TestBasicWaku(t *testing.T) {
 
 	// ctx := context.Background()
 
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+
 	nwakuConfig := WakuConfig{
 		Nodekey:         "11d0dcea28e86f81937a3bd1163473c7fbc0a0db54fd72914849bc47bdf78710",
 		Relay:           true,
@@ -50,7 +53,7 @@ func TestBasicWaku(t *testing.T) {
 	storeNodeMa, err := ma.NewMultiaddr(storeNodeInfo.ListenAddresses[0])
 	require.NoError(t, err)
 
-	w, err := newWakuNode(&nwakuConfig, nil)
+	w, err := newWakuNode(&nwakuConfig, logger.Named("nwaku"))
 	require.NoError(t, err)
 	require.NoError(t, w.Start())
 

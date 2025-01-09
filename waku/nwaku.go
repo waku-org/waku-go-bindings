@@ -433,7 +433,6 @@ type WakuNode struct {
 	wakuCtx         unsafe.Pointer
 	wakuCfg         *WakuConfig
 	logger          *zap.Logger
-	cancel          context.CancelFunc
 	MsgChan         chan common.Envelope
 	TopicHealthChan chan topicHealth
 }
@@ -442,6 +441,7 @@ func newWakuNode(config *WakuConfig, logger *zap.Logger) (*WakuNode, error) {
 
 	n := &WakuNode{
 		wakuCfg: config,
+		logger:  logger,
 	}
 
 	wg := sync.WaitGroup{}
@@ -469,7 +469,6 @@ func newWakuNode(config *WakuConfig, logger *zap.Logger) (*WakuNode, error) {
 
 	n.MsgChan = make(chan common.Envelope, MsgChanBufferSize)
 	n.TopicHealthChan = make(chan topicHealth, TopicHealthChanBufferSize)
-	n.logger = logger.Named("nwaku")
 
 	// Notice that the events for self node are handled by the 'MyEventCallback' method
 	C.cGoWakuSetEventCallback(n.wakuCtx)
@@ -544,7 +543,6 @@ func (n *WakuNode) OnEvent(eventStr string) {
 }
 
 func (n *WakuNode) parseMessageEvent(eventStr string) {
-	fmt.Println("----------- got message event: ", eventStr)
 	envelope, err := common.NewEnvelope(eventStr)
 	if err != nil {
 		n.logger.Error("could not parse message", zap.Error(err))

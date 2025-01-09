@@ -591,6 +591,7 @@ func TestConnectionChange(t *testing.T) {
 	multiaddr2, err := node2.ListenAddresses()
 	require.NoError(t, err)
 	require.NotNil(t, multiaddr2)
+	require.True(t, len(multiaddr2) > 0)
 
 	// node1 dials node2 so they become peers
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)

@@ -317,7 +317,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -439,28 +438,13 @@ type WakuNode struct {
 	TopicHealthChan chan topicHealth
 }
 
-func newWakuNode(ctx context.Context, config *WakuConfig, logger *zap.Logger) (*WakuNode, error) {
-	ctx, cancel := context.WithCancel(ctx)
+func newWakuNode(config *WakuConfig, logger *zap.Logger) (*WakuNode, error) {
 
 	n := &WakuNode{
-		cancel:  cancel,
 		wakuCfg: config,
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		// defer gocommon.LogOnPanic()
-
-		runtime.LockOSThread()
-		defer runtime.UnlockOSThread()
-
-		wg.Done()
-
-		<-ctx.Done()
-	}()
-
-	wg.Wait()
 
 	jsonConfig, err := json.Marshal(config)
 	if err != nil {
@@ -481,10 +465,11 @@ func newWakuNode(ctx context.Context, config *WakuConfig, logger *zap.Logger) (*
 
 	wg.Add(1)
 	n.wakuCtx = C.cGoWakuNew(cJsonConfig, resp)
+	wg.Wait()
+
 	n.MsgChan = make(chan common.Envelope, MsgChanBufferSize)
 	n.TopicHealthChan = make(chan topicHealth, TopicHealthChanBufferSize)
 	n.logger = logger.Named("nwaku")
-	wg.Wait()
 
 	// Notice that the events for self node are handled by the 'MyEventCallback' method
 	C.cGoWakuSetEventCallback(n.wakuCtx)

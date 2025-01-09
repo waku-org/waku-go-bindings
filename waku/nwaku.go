@@ -431,17 +431,17 @@ func GoCallback(ret C.int, msg *C.char, len C.size_t, resp unsafe.Pointer) {
 // WakuNode represents an instance of an nwaku node
 type WakuNode struct {
 	wakuCtx         unsafe.Pointer
-	wakuCfg         *WakuConfig
+	config          *WakuConfig
 	logger          *zap.Logger
 	MsgChan         chan common.Envelope
 	TopicHealthChan chan topicHealth
 }
 
-func newWakuNode(config *WakuConfig, logger *zap.Logger) (*WakuNode, error) {
+func NewWakuNode(config *WakuConfig, logger *zap.Logger) (*WakuNode, error) {
 
 	n := &WakuNode{
-		wakuCfg: config,
-		logger:  logger,
+		config: config,
+		logger: logger,
 	}
 
 	wg := sync.WaitGroup{}

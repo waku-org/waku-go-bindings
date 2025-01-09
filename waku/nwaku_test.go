@@ -53,7 +53,7 @@ func TestBasicWaku(t *testing.T) {
 	storeNodeMa, err := ma.NewMultiaddr(storeNodeInfo.ListenAddresses[0])
 	require.NoError(t, err)
 
-	w, err := newWakuNode(&nwakuConfig, logger.Named("nwaku"))
+	w, err := NewWakuNode(&nwakuConfig, logger.Named("nwaku"))
 	require.NoError(t, err)
 	require.NoError(t, w.Start())
 
@@ -201,7 +201,7 @@ func TestPeerExchange(t *testing.T) {
 		TcpPort:         60010,
 	}
 
-	discV5Node, err := newWakuNode(&discV5NodeWakuConfig, logger.Named("discV5Node"))
+	discV5Node, err := NewWakuNode(&discV5NodeWakuConfig, logger.Named("discV5Node"))
 	require.NoError(t, err)
 	require.NoError(t, discV5Node.Start())
 
@@ -226,7 +226,7 @@ func TestPeerExchange(t *testing.T) {
 		TcpPort:              60011,
 	}
 
-	pxServerNode, err := newWakuNode(&pxServerWakuConfig, logger.Named("pxServerNode"))
+	pxServerNode, err := NewWakuNode(&pxServerWakuConfig, logger.Named("pxServerNode"))
 	require.NoError(t, err)
 	require.NoError(t, pxServerNode.Start())
 
@@ -271,7 +271,7 @@ func TestPeerExchange(t *testing.T) {
 		PeerExchangeNode: serverNodeMa[0].String(),
 	}
 
-	lightNode, err := newWakuNode(&pxClientWakuConfig, logger.Named("lightNode"))
+	lightNode, err := NewWakuNode(&pxClientWakuConfig, logger.Named("lightNode"))
 	require.NoError(t, err)
 	require.NoError(t, lightNode.Start())
 
@@ -329,7 +329,7 @@ func TestDnsDiscover(t *testing.T) {
 		TcpPort:       60020,
 	}
 
-	node, err := newWakuNode(&nodeWakuConfig, logger.Named("node"))
+	node, err := NewWakuNode(&nodeWakuConfig, logger.Named("node"))
 	require.NoError(t, err)
 	require.NoError(t, node.Start())
 	time.Sleep(1 * time.Second)
@@ -359,7 +359,7 @@ func TestDial(t *testing.T) {
 		TcpPort:         60030,
 	}
 
-	dialerNode, err := newWakuNode(&dialerNodeWakuConfig, logger.Named("dialerNode"))
+	dialerNode, err := NewWakuNode(&dialerNodeWakuConfig, logger.Named("dialerNode"))
 	require.NoError(t, err)
 	require.NoError(t, dialerNode.Start())
 
@@ -374,7 +374,7 @@ func TestDial(t *testing.T) {
 		TcpPort:         60031,
 	}
 
-	receiverNode, err := newWakuNode(&receiverNodeWakuConfig, logger.Named("receiverNode"))
+	receiverNode, err := NewWakuNode(&receiverNodeWakuConfig, logger.Named("receiverNode"))
 	require.NoError(t, err)
 	require.NoError(t, receiverNode.Start())
 	receiverMultiaddr, err := receiverNode.ListenAddresses()
@@ -420,7 +420,7 @@ func TestRelay(t *testing.T) {
 		TcpPort:         60040,
 	}
 
-	senderNode, err := newWakuNode(&senderNodeWakuConfig, logger.Named("senderNode"))
+	senderNode, err := NewWakuNode(&senderNodeWakuConfig, logger.Named("senderNode"))
 	require.NoError(t, err)
 	require.NoError(t, senderNode.Start())
 	time.Sleep(1 * time.Second)
@@ -435,7 +435,7 @@ func TestRelay(t *testing.T) {
 		Discv5UdpPort:   9041,
 		TcpPort:         60041,
 	}
-	receiverNode, err := newWakuNode(&receiverNodeWakuConfig, logger.Named("receiverNode"))
+	receiverNode, err := NewWakuNode(&receiverNodeWakuConfig, logger.Named("receiverNode"))
 	require.NoError(t, err)
 	require.NoError(t, receiverNode.Start())
 	time.Sleep(1 * time.Second)
@@ -501,7 +501,7 @@ func TestTopicHealth(t *testing.T) {
 		TcpPort:         60050,
 	}
 
-	node1, err := newWakuNode(&wakuConfig1, logger.Named("node1"))
+	node1, err := NewWakuNode(&wakuConfig1, logger.Named("node1"))
 	require.NoError(t, err)
 	require.NoError(t, node1.Start())
 	time.Sleep(1 * time.Second)
@@ -516,7 +516,7 @@ func TestTopicHealth(t *testing.T) {
 		Discv5UdpPort:   9051,
 		TcpPort:         60051,
 	}
-	node2, err := newWakuNode(&wakuConfig2, logger.Named("node2"))
+	node2, err := NewWakuNode(&wakuConfig2, logger.Named("node2"))
 	require.NoError(t, err)
 	require.NoError(t, node2.Start())
 	time.Sleep(1 * time.Second)

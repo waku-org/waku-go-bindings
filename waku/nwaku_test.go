@@ -574,7 +574,6 @@ func TestConnectionChange(t *testing.T) {
 	node1, err := New(&wakuConfig1, logger.Named("node1"))
 	require.NoError(t, err)
 	require.NoError(t, node1.Start())
-	time.Sleep(1 * time.Second)
 
 	// start node2
 	wakuConfig2 := WakuConfig{
@@ -589,7 +588,6 @@ func TestConnectionChange(t *testing.T) {
 	node2, err := New(&wakuConfig2, logger.Named("node2"))
 	require.NoError(t, err)
 	require.NoError(t, node2.Start())
-	time.Sleep(1 * time.Second)
 	multiaddr2, err := node2.ListenAddresses()
 	require.NoError(t, err)
 	require.NotNil(t, multiaddr2)

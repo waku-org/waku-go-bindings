@@ -430,8 +430,8 @@ func GoCallback(ret C.int, msg *C.char, len C.size_t, resp unsafe.Pointer) {
 
 // WakuNode represents an instance of an nwaku node
 type WakuNode struct {
-	wakuCtx         unsafe.Pointer
-	wakuCfg         *WakuConfig
+	ptr             unsafe.Pointer
+	config          *WakuConfig
 	logger          *zap.Logger
 	MsgChan         chan common.Envelope
 	TopicHealthChan chan topicHealth
@@ -440,8 +440,8 @@ type WakuNode struct {
 func newWakuNode(config *WakuConfig, logger *zap.Logger) (*WakuNode, error) {
 
 	n := &WakuNode{
-		wakuCfg: config,
-		logger:  logger,
+		config: config,
+		logger: logger,
 	}
 
 	wg := sync.WaitGroup{}
@@ -464,14 +464,14 @@ func newWakuNode(config *WakuConfig, logger *zap.Logger) (*WakuNode, error) {
 	}
 
 	wg.Add(1)
-	n.wakuCtx = C.cGoWakuNew(cJsonConfig, resp)
+	n.ptr = C.cGoWakuNew(cJsonConfig, resp)
 	wg.Wait()
 
 	n.MsgChan = make(chan common.Envelope, MsgChanBufferSize)
 	n.TopicHealthChan = make(chan topicHealth, TopicHealthChanBufferSize)
 
 	// Notice that the events for self node are handled by the 'MyEventCallback' method
-	C.cGoWakuSetEventCallback(n.wakuCtx)
+	C.cGoWakuSetEventCallback(n.ptr)
 	registerNode(n)
 
 	return n, nil
@@ -490,14 +490,14 @@ func init() {
 }
 
 func registerNode(node *WakuNode) {
-	_, ok := nodeRegistry[node.wakuCtx]
+	_, ok := nodeRegistry[node.ptr]
 	if !ok {
-		nodeRegistry[node.wakuCtx] = node
+		nodeRegistry[node.ptr] = node
 	}
 }
 
 func unregisterNode(node *WakuNode) {
-	delete(nodeRegistry, node.wakuCtx)
+	delete(nodeRegistry, node.ptr)
 }
 
 //export globalEventCallback
@@ -576,7 +576,7 @@ func (n *WakuNode) GetNumConnectedRelayPeers(optPubsubTopic ...string) (int, err
 	var cPubsubTopic = C.CString(pubsubTopic)
 	defer C.free(unsafe.Pointer(cPubsubTopic))
 
-	C.cGoWakuGetNumConnectedRelayPeers(n.wakuCtx, cPubsubTopic, resp)
+	C.cGoWakuGetNumConnectedRelayPeers(n.ptr, cPubsubTopic, resp)
 
 	if C.getRet(resp) == C.RET_OK {
 		numPeersStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
@@ -601,7 +601,7 @@ func (n *WakuNode) DisconnectPeerByID(peerID peer.ID) error {
 	defer C.free(unsafe.Pointer(cPeerId))
 
 	wg.Add(1)
-	C.cGoWakuDisconnectPeerById(n.wakuCtx, cPeerId, resp)
+	C.cGoWakuDisconnectPeerById(n.ptr, cPeerId, resp)
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
@@ -618,7 +618,7 @@ func (n *WakuNode) GetConnectedPeers() (peer.IDSlice, error) {
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuGetConnectedPeers(n.wakuCtx, resp)
+	C.cGoWakuGetConnectedPeers(n.ptr, resp)
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
@@ -656,12 +656,12 @@ func (n *WakuNode) RelaySubscribe(pubsubTopic string) error {
 	defer C.freeResp(resp)
 	defer C.free(unsafe.Pointer(cPubsubTopic))
 
-	if n.wakuCtx == nil {
+	if n.ptr == nil {
 		return errors.New("wakuCtx is nil")
 	}
 
 	wg.Add(1)
-	C.cGoWakuRelaySubscribe(n.wakuCtx, cPubsubTopic, resp)
+	C.cGoWakuRelaySubscribe(n.ptr, cPubsubTopic, resp)
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
@@ -687,12 +687,12 @@ func (n *WakuNode) RelayAddProtectedShard(clusterId uint16, shardId uint16, pubk
 	defer C.freeResp(resp)
 	defer C.free(unsafe.Pointer(cPublicKey))
 
-	if n.wakuCtx == nil {
+	if n.ptr == nil {
 		return errors.New("wakuCtx is nil")
 	}
 
 	wg.Add(1)
-	C.cGoWakuRelayAddProtectedShard(n.wakuCtx, C.int(clusterId), C.int(shardId), cPublicKey, resp)
+	C.cGoWakuRelayAddProtectedShard(n.ptr, C.int(clusterId), C.int(shardId), cPublicKey, resp)
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
@@ -716,12 +716,12 @@ func (n *WakuNode) RelayUnsubscribe(pubsubTopic string) error {
 	defer C.freeResp(resp)
 	defer C.free(unsafe.Pointer(cPubsubTopic))
 
-	if n.wakuCtx == nil {
+	if n.ptr == nil {
 		return errors.New("wakuCtx is nil")
 	}
 
 	wg.Add(1)
-	C.cGoWakuRelayUnsubscribe(n.wakuCtx, cPubsubTopic, resp)
+	C.cGoWakuRelayUnsubscribe(n.ptr, cPubsubTopic, resp)
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
@@ -739,7 +739,7 @@ func (n *WakuNode) PeerExchangeRequest(numPeers uint64) (uint64, error) {
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuPeerExchangeQuery(n.wakuCtx, C.uint64_t(numPeers), resp)
+	C.cGoWakuPeerExchangeQuery(n.ptr, C.uint64_t(numPeers), resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		numRecvPeersStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
@@ -761,7 +761,7 @@ func (n *WakuNode) StartDiscV5() error {
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuStartDiscV5(n.wakuCtx, resp)
+	C.cGoWakuStartDiscV5(n.ptr, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		return nil
@@ -777,7 +777,7 @@ func (n *WakuNode) StopDiscV5() error {
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuStopDiscV5(n.wakuCtx, resp)
+	C.cGoWakuStopDiscV5(n.ptr, resp)
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
@@ -794,7 +794,7 @@ func (n *WakuNode) Version() (string, error) {
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuVersion(n.wakuCtx, resp)
+	C.cGoWakuVersion(n.ptr, resp)
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
@@ -831,7 +831,7 @@ func (n *WakuNode) StoreQuery(ctx context.Context, storeRequest *storepb.StoreQu
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuStoreQuery(n.wakuCtx, cJsonQuery, cPeerAddr, C.int(timeoutMs), resp)
+	C.cGoWakuStoreQuery(n.ptr, cJsonQuery, cPeerAddr, C.int(timeoutMs), resp)
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
@@ -866,7 +866,7 @@ func (n *WakuNode) RelayPublish(ctx context.Context, message *pb.WakuMessage, pu
 	defer C.free(unsafe.Pointer(msg))
 
 	wg.Add(1)
-	C.cGoWakuRelayPublish(n.wakuCtx, cPubsubTopic, msg, C.int(timeoutMs), resp)
+	C.cGoWakuRelayPublish(n.ptr, cPubsubTopic, msg, C.int(timeoutMs), resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		msgHash := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
@@ -892,7 +892,7 @@ func (n *WakuNode) DnsDiscovery(ctx context.Context, enrTreeUrl string, nameDnsS
 
 	timeoutMs := getContextTimeoutMilliseconds(ctx)
 	wg.Add(1)
-	C.cGoWakuDnsDiscovery(n.wakuCtx, cEnrTree, cDnsServer, C.int(timeoutMs), resp)
+	C.cGoWakuDnsDiscovery(n.ptr, cEnrTree, cDnsServer, C.int(timeoutMs), resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		var addrsRet []multiaddr.Multiaddr
@@ -927,7 +927,7 @@ func (n *WakuNode) PingPeer(ctx context.Context, peerInfo peer.AddrInfo) (time.D
 
 	timeoutMs := getContextTimeoutMilliseconds(ctx)
 	wg.Add(1)
-	C.cGoWakuPingPeer(n.wakuCtx, cPeerId, C.int(timeoutMs), resp)
+	C.cGoWakuPingPeer(n.ptr, cPeerId, C.int(timeoutMs), resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		rttStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
@@ -949,7 +949,7 @@ func (n *WakuNode) Start() error {
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuStart(n.wakuCtx, resp)
+	C.cGoWakuStart(n.ptr, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		return nil
@@ -966,7 +966,7 @@ func (n *WakuNode) Stop() error {
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuStop(n.wakuCtx, resp)
+	C.cGoWakuStop(n.ptr, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		unregisterNode(n)
@@ -984,7 +984,7 @@ func (n *WakuNode) Destroy() error {
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuDestroy(n.wakuCtx, resp)
+	C.cGoWakuDestroy(n.ptr, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		return nil
@@ -1001,7 +1001,7 @@ func (n *WakuNode) PeerID() (peer.ID, error) {
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuGetMyPeerId(n.wakuCtx, resp)
+	C.cGoWakuGetMyPeerId(n.ptr, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		peerIdStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
@@ -1026,7 +1026,7 @@ func (n *WakuNode) Connect(ctx context.Context, addr multiaddr.Multiaddr) error 
 
 	timeoutMs := getContextTimeoutMilliseconds(ctx)
 	wg.Add(1)
-	C.cGoWakuConnect(n.wakuCtx, cPeerMultiAddr, C.int(timeoutMs), resp)
+	C.cGoWakuConnect(n.ptr, cPeerMultiAddr, C.int(timeoutMs), resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		return nil
@@ -1048,7 +1048,7 @@ func (n *WakuNode) DialPeerByID(ctx context.Context, peerID peer.ID, protocol li
 
 	timeoutMs := getContextTimeoutMilliseconds(ctx)
 	wg.Add(1)
-	C.cGoWakuDialPeerById(n.wakuCtx, cPeerId, cProtocol, C.int(timeoutMs), resp)
+	C.cGoWakuDialPeerById(n.ptr, cPeerId, cProtocol, C.int(timeoutMs), resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		return nil
@@ -1065,7 +1065,7 @@ func (n *WakuNode) ListenAddresses() ([]multiaddr.Multiaddr, error) {
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuListenAddresses(n.wakuCtx, resp)
+	C.cGoWakuListenAddresses(n.ptr, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		var addrsRet []multiaddr.Multiaddr
@@ -1091,7 +1091,7 @@ func (n *WakuNode) ENR() (*enode.Node, error) {
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuGetMyENR(n.wakuCtx, resp)
+	C.cGoWakuGetMyENR(n.ptr, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		enrStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
@@ -1115,7 +1115,7 @@ func (n *WakuNode) GetNumPeersInMesh(pubsubTopic string) (int, error) {
 	defer C.free(unsafe.Pointer(cPubsubTopic))
 
 	wg.Add(1)
-	C.cGoWakuGetNumPeersInMesh(n.wakuCtx, cPubsubTopic, resp)
+	C.cGoWakuGetNumPeersInMesh(n.ptr, cPubsubTopic, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		numPeersStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
@@ -1138,7 +1138,7 @@ func (n *WakuNode) GetPeerIDsFromPeerStore() (peer.IDSlice, error) {
 	defer C.freeResp(resp)
 
 	wg.Add(1)
-	C.cGoWakuGetPeerIdsFromPeerStore(n.wakuCtx, resp)
+	C.cGoWakuGetPeerIdsFromPeerStore(n.ptr, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		peersStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
@@ -1171,7 +1171,7 @@ func (n *WakuNode) GetPeerIDsByProtocol(protocol libp2pproto.ID) (peer.IDSlice, 
 	defer C.free(unsafe.Pointer(cProtocol))
 
 	wg.Add(1)
-	C.cGoWakuGetPeerIdsByProtocol(n.wakuCtx, cProtocol, resp)
+	C.cGoWakuGetPeerIdsByProtocol(n.ptr, cProtocol, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		peersStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
@@ -1208,7 +1208,7 @@ func (n *WakuNode) DialPeer(ctx context.Context, peerAddr multiaddr.Multiaddr, p
 
 	timeoutMs := getContextTimeoutMilliseconds(ctx)
 	wg.Add(1)
-	C.cGoWakuDialPeer(n.wakuCtx, cPeerMultiAddr, cProtocol, C.int(timeoutMs), resp)
+	C.cGoWakuDialPeer(n.ptr, cPeerMultiAddr, cProtocol, C.int(timeoutMs), resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
 		return nil

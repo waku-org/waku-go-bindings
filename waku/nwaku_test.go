@@ -236,6 +236,7 @@ func TestPeerExchange(t *testing.T) {
 	serverNodeMa, err := pxServerNode.ListenAddresses()
 	require.NoError(t, err)
 	require.NotNil(t, serverNodeMa)
+	require.True(t, len(serverNodeMa) > 0)
 
 	// Sanity check, not great, but it's probably helpful
 	options := func(b *backoff.ExponentialBackOff) {
@@ -380,6 +381,7 @@ func TestDial(t *testing.T) {
 	receiverMultiaddr, err := receiverNode.ListenAddresses()
 	require.NoError(t, err)
 	require.NotNil(t, receiverMultiaddr)
+	require.True(t, len(receiverMultiaddr) > 0)
 	// Check that both nodes start with no connected peers
 	dialerPeerCount, err := dialerNode.GetNumConnectedPeers()
 	require.NoError(t, err)
@@ -442,6 +444,7 @@ func TestRelay(t *testing.T) {
 	receiverMultiaddr, err := receiverNode.ListenAddresses()
 	require.NoError(t, err)
 	require.NotNil(t, receiverMultiaddr)
+	require.True(t, len(receiverMultiaddr) > 0)
 
 	// Dial so they become peers
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
@@ -523,6 +526,7 @@ func TestTopicHealth(t *testing.T) {
 	multiaddr2, err := node2.ListenAddresses()
 	require.NoError(t, err)
 	require.NotNil(t, multiaddr2)
+	require.True(t, len(multiaddr2) > 0)
 
 	// node1 dials node2 so they become peers
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)

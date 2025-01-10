@@ -205,8 +205,6 @@ func TestPeerExchange(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, discV5Node.Start())
 
-	time.Sleep(1 * time.Second)
-
 	discV5NodePeerId, err := discV5Node.PeerID()
 	require.NoError(t, err)
 
@@ -276,8 +274,6 @@ func TestPeerExchange(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, lightNode.Start())
 
-	time.Sleep(1 * time.Second)
-
 	pxServerPeerId, err := pxServerNode.PeerID()
 	require.NoError(t, err)
 
@@ -333,7 +329,6 @@ func TestDnsDiscover(t *testing.T) {
 	node, err := NewWakuNode(&nodeWakuConfig, logger.Named("node"))
 	require.NoError(t, err)
 	require.NoError(t, node.Start())
-	time.Sleep(1 * time.Second)
 	sampleEnrTree := "enrtree://AMOJVZX4V6EXP7NTJPMAYJYST2QP6AJXYW76IU6VGJS7UVSNDYZG4@boot.prod.status.nodes.status.im"
 
 	ctx, cancel := context.WithTimeout(context.TODO(), requestTimeout)
@@ -425,7 +420,6 @@ func TestRelay(t *testing.T) {
 	senderNode, err := NewWakuNode(&senderNodeWakuConfig, logger.Named("senderNode"))
 	require.NoError(t, err)
 	require.NoError(t, senderNode.Start())
-	time.Sleep(1 * time.Second)
 
 	// start node that will receive the message
 	receiverNodeWakuConfig := WakuConfig{
@@ -440,7 +434,6 @@ func TestRelay(t *testing.T) {
 	receiverNode, err := NewWakuNode(&receiverNodeWakuConfig, logger.Named("receiverNode"))
 	require.NoError(t, err)
 	require.NoError(t, receiverNode.Start())
-	time.Sleep(1 * time.Second)
 	receiverMultiaddr, err := receiverNode.ListenAddresses()
 	require.NoError(t, err)
 	require.NotNil(t, receiverMultiaddr)
@@ -507,7 +500,6 @@ func TestTopicHealth(t *testing.T) {
 	node1, err := NewWakuNode(&wakuConfig1, logger.Named("node1"))
 	require.NoError(t, err)
 	require.NoError(t, node1.Start())
-	time.Sleep(1 * time.Second)
 
 	// start node2
 	wakuConfig2 := WakuConfig{
@@ -522,7 +514,6 @@ func TestTopicHealth(t *testing.T) {
 	node2, err := NewWakuNode(&wakuConfig2, logger.Named("node2"))
 	require.NoError(t, err)
 	require.NoError(t, node2.Start())
-	time.Sleep(1 * time.Second)
 	multiaddr2, err := node2.ListenAddresses()
 	require.NoError(t, err)
 	require.NotNil(t, multiaddr2)

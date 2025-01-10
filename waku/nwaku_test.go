@@ -3,6 +3,7 @@ package waku
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/waku-org/go-waku/waku/v2/protocol/pb"
 	"github.com/waku-org/go-waku/waku/v2/protocol/store"
+	"github.com/waku-org/waku-go-bindings/waku/common"
 )
 
 // In order to run this test, you must run an nwaku node
@@ -632,4 +634,108 @@ func TestConnectionChange(t *testing.T) {
 	// Stop nodes
 	require.NoError(t, node1.Stop())
 	require.NoError(t, node2.Stop())
+}
+
+func TestHash(t *testing.T) {
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+
+	// start node that will send the message
+	senderNodeWakuConfig := WakuConfig{
+		Relay:           true,
+		Store:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   9070,
+		TcpPort:         60070,
+	}
+
+	fmt.Println("------------ creating node 1")
+	senderNode, err := NewWakuNode(&senderNodeWakuConfig, logger.Named("senderNode"))
+	require.NoError(t, err)
+	fmt.Println("------------ starting node 1")
+	require.NoError(t, senderNode.Start())
+	fmt.Println("------------ node 1 started")
+
+	// start node that will receive the message
+	receiverNodeWakuConfig := WakuConfig{
+		Relay:           true,
+		Store:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   9071,
+		TcpPort:         60071,
+	}
+	receiverNode, err := NewWakuNode(&receiverNodeWakuConfig, logger.Named("receiverNode"))
+	require.NoError(t, err)
+	require.NoError(t, receiverNode.Start())
+	receiverMultiaddr, err := receiverNode.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, receiverMultiaddr)
+	require.True(t, len(receiverMultiaddr) > 0)
+
+	// Dial so they become peers
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	err = senderNode.Connect(ctx, receiverMultiaddr[0])
+	require.NoError(t, err)
+	time.Sleep(1 * time.Second)
+	// Check that both nodes now have one connected peer
+	senderPeerCount, err := senderNode.GetNumConnectedPeers()
+	require.NoError(t, err)
+	require.True(t, senderPeerCount == 1, "Dialer node should have 1 peer")
+	receiverPeerCount, err := receiverNode.GetNumConnectedPeers()
+	require.NoError(t, err)
+	require.True(t, receiverPeerCount == 1, "Receiver node should have 1 peer")
+
+	message := &pb.WakuMessage{
+		Payload:      []byte{1, 2, 3, 4, 5, 6},
+		ContentTopic: "test-content-topic",
+		Version:      proto.Uint32(0),
+		Timestamp:    proto.Int64(time.Now().Unix()),
+	}
+	// send message
+	pubsubTopic := FormatWakuRelayTopic(senderNodeWakuConfig.ClusterID, senderNodeWakuConfig.Shards[0])
+	ctx2, cancel2 := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel2()
+
+	fmt.Println("----------- publishing message ------------")
+	hash, err := senderNode.RelayPublish(ctx2, message, pubsubTopic)
+	require.NoError(t, err)
+	fmt.Println("----------- RelayPublish returned hash: ", hash)
+
+	// Wait to receive message
+	select {
+	case envelope := <-receiverNode.MsgChan:
+		fmt.Println("------- received envelope: ", envelope)
+		require.NotNil(t, envelope, "Envelope should be received")
+		require.Equal(t, message.Payload, envelope.Message().Payload, "Received payload should match")
+		require.Equal(t, message.ContentTopic, envelope.Message().ContentTopic, "Content topic should match")
+	case <-time.After(10 * time.Second):
+		t.Fatal("Timeout: No message received within 10 seconds")
+	}
+
+	// No send store query
+	ctx3, cancel3 := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel3()
+
+	storeReq := common.StoreQueryRequest{
+		IncludeData:   true,
+		ContentTopics: []string{"test-content-topic"},
+	}
+
+	storeNodeAddrInfo, err := peer.AddrInfoFromString(receiverMultiaddr[0].String())
+	require.NoError(t, err)
+
+	res, err := senderNode.StoreQuery(ctx3, &storeReq, *storeNodeAddrInfo)
+	require.NoError(t, err)
+	fmt.Println("----------- res: ", res)
+
+	// Stop nodes
+	require.NoError(t, senderNode.Stop())
+	require.NoError(t, receiverNode.Stop())
 }

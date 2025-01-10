@@ -571,7 +571,7 @@ func TestConnectionChange(t *testing.T) {
 		TcpPort:         60060,
 	}
 
-	node1, err := New(&wakuConfig1, logger.Named("node1"))
+	node1, err := NewWakuNode(&wakuConfig1, logger.Named("node1"))
 	require.NoError(t, err)
 	require.NoError(t, node1.Start())
 
@@ -585,7 +585,7 @@ func TestConnectionChange(t *testing.T) {
 		Discv5UdpPort:   9061,
 		TcpPort:         60061,
 	}
-	node2, err := New(&wakuConfig2, logger.Named("node2"))
+	node2, err := NewWakuNode(&wakuConfig2, logger.Named("node2"))
 	require.NoError(t, err)
 	require.NoError(t, node2.Start())
 	multiaddr2, err := node2.ListenAddresses()
@@ -596,23 +596,23 @@ func TestConnectionChange(t *testing.T) {
 	// node1 dials node2 so they become peers
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
-	err = node1.DialPeer(ctx, multiaddr2[0])
+	err = node1.Connect(ctx, multiaddr2[0])
 	require.NoError(t, err)
 	time.Sleep(1 * time.Second)
 	// Check that both nodes now have one connected peer
-	peerCount1, err := node1.PeerCount()
+	peerCount1, err := node1.GetNumConnectedPeers()
 	require.NoError(t, err)
 	require.True(t, peerCount1 == 1, "node1 should have 1 peer")
-	peerCount2, err := node2.PeerCount()
+	peerCount2, err := node2.GetNumConnectedPeers()
 	require.NoError(t, err)
 	require.True(t, peerCount2 == 1, "node2 should have 1 peer")
 
-	peerId1, err := node1.node.PeerID()
+	peerId1, err := node1.PeerID()
 	require.NoError(t, err)
 
 	// Wait to receive connectionChange event
 	select {
-	case connectionChange := <-node2.node.ConnectionChangeChan:
+	case connectionChange := <-node2.ConnectionChangeChan:
 		require.NotNil(t, connectionChange, "connectionChange should be updated")
 		require.Equal(t, connectionChange.PeerEvent, "Joined", "connectionChange Joined event should be emitted")
 		require.Equal(t, connectionChange.PeerId, peerId1, "connectionChange event should contain node 1's peerId")
@@ -621,12 +621,12 @@ func TestConnectionChange(t *testing.T) {
 	}
 
 	// Disconnect from node1
-	err = node2.node.DisconnectPeerByID(peerId1)
+	err = node2.DisconnectPeerByID(peerId1)
 	require.NoError(t, err)
 
 	// Wait to receive connectionChange event
 	select {
-	case connectionChange := <-node2.node.ConnectionChangeChan:
+	case connectionChange := <-node2.ConnectionChangeChan:
 		require.NotNil(t, connectionChange, "connectionChange should be updated")
 		require.Equal(t, connectionChange.PeerEvent, "Left", "connectionChange Left event should be emitted")
 		require.Equal(t, connectionChange.PeerId, peerId1, "connectionChange event should contain node 1's peerId")

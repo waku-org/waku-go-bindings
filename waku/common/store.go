@@ -3,7 +3,7 @@ package common
 type StoreQueryRequest struct {
 	RequestId         string        `json:"request_id"`
 	IncludeData       bool          `json:"include_data"`
-	PubsubTopic       *string       `json:"pubsub_topic,omitempty"`
+	PubsubTopic       string        `json:"pubsub_topic,omitempty"`
 	ContentTopics     []string      `json:"content_topics,omitempty"`
 	TimeStart         *int64        `json:"time_start,omitempty"`
 	TimeEnd           *int64        `json:"time_end,omitempty"`

@@ -13,7 +13,7 @@ type StoreQueryRequest struct {
 	PaginationLimit   *uint64       `json:"pagination_limit,omitempty"`
 }
 
-type storeMessageResponse struct {
+type StoreMessageResponse struct {
 	WakuMessage tmpWakuMessageJson `json:"message"`
 	PubsubTopic string             `json:"pubsubTopic"`
 	MessageHash MessageHash        `json:"messageHash"`
@@ -23,6 +23,6 @@ type StoreQueryResponse struct {
 	RequestId        string                 `json:"requestId,omitempty"`
 	StatusCode       *uint32                `json:"statusCode,omitempty"`
 	StatusDesc       string                 `json:"statusDesc,omitempty"`
-	Messages         []storeMessageResponse `json:"messages,omitempty"`
+	Messages         []StoreMessageResponse `json:"messages,omitempty"`
 	PaginationCursor MessageHash            `json:"paginationCursor,omitempty"`
 }

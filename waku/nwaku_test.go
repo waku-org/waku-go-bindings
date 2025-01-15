@@ -459,7 +459,7 @@ func TestRelay(t *testing.T) {
 		Payload:      []byte{1, 2, 3, 4, 5, 6},
 		ContentTopic: "test-content-topic",
 		Version:      proto.Uint32(0),
-		Timestamp:    proto.Int64(time.Now().Unix()),
+		Timestamp:    proto.Int64(time.Now().UnixNano()),
 	}
 	// send message
 	pubsubTopic := FormatWakuRelayTopic(senderNodeWakuConfig.ClusterID, senderNodeWakuConfig.Shards[0])
@@ -650,6 +650,7 @@ func TestHash(t *testing.T) {
 		Shards:          []uint16{64},
 		Discv5UdpPort:   9070,
 		TcpPort:         60070,
+		LegacyStore:     false,
 	}
 
 	fmt.Println("------------ creating node 1")
@@ -669,6 +670,7 @@ func TestHash(t *testing.T) {
 		Shards:          []uint16{64},
 		Discv5UdpPort:   9071,
 		TcpPort:         60071,
+		LegacyStore:     false,
 	}
 	receiverNode, err := NewWakuNode(&receiverNodeWakuConfig, logger.Named("receiverNode"))
 	require.NoError(t, err)
@@ -696,7 +698,7 @@ func TestHash(t *testing.T) {
 		Payload:      []byte{1, 2, 3, 4, 5, 6},
 		ContentTopic: "test-content-topic",
 		Version:      proto.Uint32(0),
-		Timestamp:    proto.Int64(time.Now().Unix()),
+		Timestamp:    proto.Int64(time.Now().UnixNano()),
 	}
 	// send message
 	pubsubTopic := FormatWakuRelayTopic(senderNodeWakuConfig.ClusterID, senderNodeWakuConfig.Shards[0])
@@ -719,7 +721,7 @@ func TestHash(t *testing.T) {
 		t.Fatal("Timeout: No message received within 10 seconds")
 	}
 
-	// No send store query
+	// Now send store query
 	ctx3, cancel3 := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel3()
 
@@ -728,12 +730,13 @@ func TestHash(t *testing.T) {
 		ContentTopics: []string{"test-content-topic"},
 	}
 
+	fmt.Println("------------ storeNode multiaddr: ", receiverMultiaddr[0].String())
 	storeNodeAddrInfo, err := peer.AddrInfoFromString(receiverMultiaddr[0].String())
 	require.NoError(t, err)
 
 	res, err := senderNode.StoreQuery(ctx3, &storeReq, *storeNodeAddrInfo)
 	require.NoError(t, err)
-	fmt.Println("----------- res: ", res)
+	fmt.Printf("%+v\n", res)
 
 	// Stop nodes
 	require.NoError(t, senderNode.Stop())

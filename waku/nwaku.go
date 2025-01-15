@@ -345,6 +345,7 @@ type WakuConfig struct {
 	Nodekey                     string           `json:"nodekey,omitempty"`
 	Relay                       bool             `json:"relay,omitempty"`
 	Store                       bool             `json:"store,omitempty"`
+	LegacyStore                 bool             `json:"legacyStore"`
 	Storenode                   string           `json:"storenode,omitempty"`
 	StoreMessageRetentionPolicy string           `json:"storeMessageRetentionPolicy,omitempty"`
 	StoreMessageDbUrl           string           `json:"storeMessageDbUrl,omitempty"`
@@ -828,11 +829,13 @@ func (n *WakuNode) Version() (string, error) {
 func (n *WakuNode) StoreQuery(ctx context.Context, storeRequest *common.StoreQueryRequest, peerInfo peer.AddrInfo) (*common.StoreQueryResponse, error) {
 	timeoutMs := getContextTimeoutMilliseconds(ctx)
 
+	fmt.Println("---------- StoreQuery 1 ---------")
 	b, err := json.Marshal(storeRequest)
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Println("---------- StoreQuery 2 ---------")
 	addrs := make([]string, len(peerInfo.Addrs))
 	for i, addr := range utils.EncapsulatePeerID(peerInfo.ID, peerInfo.Addrs...) {
 		addrs[i] = addr.String()
@@ -854,12 +857,12 @@ func (n *WakuNode) StoreQuery(ctx context.Context, storeRequest *common.StoreQue
 
 	if C.getRet(resp) == C.RET_OK {
 		jsonResponseStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
-		storeQueryResponse := &common.StoreQueryResponse{}
-		err = json.Unmarshal([]byte(jsonResponseStr), storeQueryResponse)
+		storeQueryResponse := common.StoreQueryResponse{}
+		err = json.Unmarshal([]byte(jsonResponseStr), &storeQueryResponse)
 		if err != nil {
 			return nil, err
 		}
-		return storeQueryResponse, nil
+		return &storeQueryResponse, nil
 	}
 	errMsg := "error WakuStoreQuery: " +
 		C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))

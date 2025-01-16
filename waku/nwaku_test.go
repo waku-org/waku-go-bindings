@@ -653,12 +653,9 @@ func TestHash(t *testing.T) {
 		LegacyStore:     false,
 	}
 
-	fmt.Println("------------ creating node 1")
 	senderNode, err := NewWakuNode(&senderNodeWakuConfig, logger.Named("senderNode"))
 	require.NoError(t, err)
-	fmt.Println("------------ starting node 1")
 	require.NoError(t, senderNode.Start())
-	fmt.Println("------------ node 1 started")
 
 	// start node that will receive the message
 	receiverNodeWakuConfig := WakuConfig{
@@ -712,13 +709,10 @@ func TestHash(t *testing.T) {
 		ctx2, cancel2 := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel2()
 
-		fmt.Printf("----------- publishing message %d ------------\n", i)
 		hash, err := senderNode.RelayPublish(ctx2, message, pubsubTopic)
 		require.NoError(t, err)
 		hashes = append(hashes, hash)
-		fmt.Printf("----------- RelayPublish %d returned hash: %s\n", i, hash)
 	}
-	fmt.Println("-------- sent hashes: ", hashes)
 
 	// Wait to receive all 8 messages
 	receivedCount := 0
@@ -730,7 +724,6 @@ func TestHash(t *testing.T) {
 	for receivedCount < numMessages {
 		select {
 		case envelope := <-receiverNode.MsgChan:
-			fmt.Printf("------- received envelope: %v\n", envelope)
 			require.NotNil(t, envelope, "Envelope should be received")
 
 			payload := envelope.Message().Payload
@@ -740,7 +733,6 @@ func TestHash(t *testing.T) {
 			if !receivedMessages[msgNum] {
 				receivedMessages[msgNum] = true
 				receivedCount++
-				fmt.Printf("Received message %d (total: %d)\n", msgNum, receivedCount)
 			}
 
 			require.Equal(t, "test-content-topic", envelope.Message().ContentTopic, "Content topic should match")
@@ -764,7 +756,6 @@ func TestHash(t *testing.T) {
 		TimeStart:         timeStart,
 	}
 
-	fmt.Println("------------ storeNode multiaddr: ", receiverMultiaddr[0].String())
 	storeNodeAddrInfo, err := peer.AddrInfoFromString(receiverMultiaddr[0].String())
 	require.NoError(t, err)
 
@@ -773,11 +764,10 @@ func TestHash(t *testing.T) {
 
 	res1, err := senderNode.StoreQuery(ctx3, &storeReq1, *storeNodeAddrInfo)
 	require.NoError(t, err)
-	fmt.Printf("%+v\n", res1)
 
-	storedMessages := res1.Messages
+	storedMessages1 := res1.Messages
 	for i := 0; i < paginationLimit; i++ {
-		require.True(t, storedMessages[i].MessageHash == hashes[i], fmt.Sprintf("Stored message does not match received message for index %d", i))
+		require.True(t, storedMessages1[i].MessageHash == hashes[i], fmt.Sprintf("Stored message does not match received message for index %d", i))
 	}
 
 	// Now let's query the second page
@@ -795,7 +785,28 @@ func TestHash(t *testing.T) {
 
 	res2, err := senderNode.StoreQuery(ctx4, &storeReq2, *storeNodeAddrInfo)
 	require.NoError(t, err)
-	fmt.Printf("%+v\n", res2)
+
+	storedMessages2 := res2.Messages
+	for i := 0; i < len(storedMessages2); i++ {
+		require.True(t, storedMessages2[i].MessageHash == hashes[i+paginationLimit], fmt.Sprintf("Stored message does not match received message for index %d", i))
+	}
+
+	// Now let's query for two specific message hashes
+	storeReq3 := common.StoreQueryRequest{
+		IncludeData:   true,
+		ContentTopics: []string{"test-content-topic"},
+		MessageHashes: []common.MessageHash{hashes[0], hashes[2]},
+	}
+
+	ctx5, cancel5 := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel5()
+
+	res3, err := senderNode.StoreQuery(ctx5, &storeReq3, *storeNodeAddrInfo)
+	require.NoError(t, err)
+
+	storedMessages3 := res3.Messages
+	require.True(t, storedMessages3[0].MessageHash == hashes[0], "Stored message does not match queried message")
+	require.True(t, storedMessages3[1].MessageHash == hashes[2], "Stored message does not match queried message")
 
 	// Stop nodes
 	require.NoError(t, senderNode.Stop())

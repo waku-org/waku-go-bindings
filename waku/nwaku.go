@@ -829,13 +829,11 @@ func (n *WakuNode) Version() (string, error) {
 func (n *WakuNode) StoreQuery(ctx context.Context, storeRequest *common.StoreQueryRequest, peerInfo peer.AddrInfo) (*common.StoreQueryResponse, error) {
 	timeoutMs := getContextTimeoutMilliseconds(ctx)
 
-	fmt.Println("---------- StoreQuery 1 ---------")
 	b, err := json.Marshal(storeRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("---------- StoreQuery 2 ---------")
 	addrs := make([]string, len(peerInfo.Addrs))
 	for i, addr := range utils.EncapsulatePeerID(peerInfo.ID, peerInfo.Addrs...) {
 		addrs[i] = addr.String()

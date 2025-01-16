@@ -750,7 +750,7 @@ func TestStore(t *testing.T) {
 	// Now send store query
 	storeReq1 := common.StoreQueryRequest{
 		IncludeData:       true,
-		ContentTopics:     []string{"test-content-topic"},
+		ContentTopics:     &[]string{"test-content-topic"},
 		PaginationLimit:   proto.Uint64(uint64(paginationLimit)),
 		PaginationForward: true,
 		TimeStart:         timeStart,
@@ -765,7 +765,7 @@ func TestStore(t *testing.T) {
 	res1, err := senderNode.StoreQuery(ctx3, &storeReq1, *storeNodeAddrInfo)
 	require.NoError(t, err)
 
-	storedMessages1 := res1.Messages
+	storedMessages1 := *res1.Messages
 	for i := 0; i < paginationLimit; i++ {
 		require.True(t, storedMessages1[i].MessageHash == hashes[i], fmt.Sprintf("Stored message does not match received message for index %d", i))
 	}
@@ -773,7 +773,7 @@ func TestStore(t *testing.T) {
 	// Now let's query the second page
 	storeReq2 := common.StoreQueryRequest{
 		IncludeData:       true,
-		ContentTopics:     []string{"test-content-topic"},
+		ContentTopics:     &[]string{"test-content-topic"},
 		PaginationLimit:   proto.Uint64(uint64(paginationLimit)),
 		PaginationForward: true,
 		TimeStart:         timeStart,
@@ -786,7 +786,7 @@ func TestStore(t *testing.T) {
 	res2, err := senderNode.StoreQuery(ctx4, &storeReq2, *storeNodeAddrInfo)
 	require.NoError(t, err)
 
-	storedMessages2 := res2.Messages
+	storedMessages2 := *res2.Messages
 	for i := 0; i < len(storedMessages2); i++ {
 		require.True(t, storedMessages2[i].MessageHash == hashes[i+paginationLimit], fmt.Sprintf("Stored message does not match received message for index %d", i))
 	}
@@ -794,8 +794,8 @@ func TestStore(t *testing.T) {
 	// Now let's query for two specific message hashes
 	storeReq3 := common.StoreQueryRequest{
 		IncludeData:   true,
-		ContentTopics: []string{"test-content-topic"},
-		MessageHashes: []common.MessageHash{hashes[0], hashes[2]},
+		ContentTopics: &[]string{"test-content-topic"},
+		MessageHashes: &[]common.MessageHash{hashes[0], hashes[2]},
 	}
 
 	ctx5, cancel5 := context.WithTimeout(context.Background(), requestTimeout)
@@ -804,7 +804,7 @@ func TestStore(t *testing.T) {
 	res3, err := senderNode.StoreQuery(ctx5, &storeReq3, *storeNodeAddrInfo)
 	require.NoError(t, err)
 
-	storedMessages3 := res3.Messages
+	storedMessages3 := *res3.Messages
 	require.True(t, storedMessages3[0].MessageHash == hashes[0], "Stored message does not match queried message")
 	require.True(t, storedMessages3[1].MessageHash == hashes[2], "Stored message does not match queried message")
 

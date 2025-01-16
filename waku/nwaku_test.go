@@ -636,7 +636,7 @@ func TestConnectionChange(t *testing.T) {
 	require.NoError(t, node2.Stop())
 }
 
-func TestHash(t *testing.T) {
+func TestStore(t *testing.T) {
 	logger, err := zap.NewDevelopment()
 	require.NoError(t, err)
 

@@ -1,7 +1,7 @@
 package waku
 
 /*
-	#cgo LDFLAGS: -L../third_party/nwaku/build/ -lnegentropy -lwaku
+	#cgo LDFLAGS: -L../third_party/nwaku/build/ -lwaku
 	#cgo LDFLAGS: -L../third_party/nwaku -Wl,-rpath,../third_party/nwaku/build/
 
 	#include "../third_party/nwaku/library/libwaku.h"

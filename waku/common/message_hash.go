@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 )
 
@@ -10,11 +11,11 @@ type MessageHash string
 
 func ToMessageHash(val string) (MessageHash, error) {
 	if len(val) == 0 {
-		return "", fmt.Errorf("empty string not allowed")
+		return "", errors.New("empty string not allowed")
 	}
 
 	if len(val) < 2 || val[:2] != "0x" {
-		return "", fmt.Errorf("string must start with 0x")
+		return "", errors.New("string must start with 0x")
 	}
 
 	// Remove "0x" prefix for hex decoding

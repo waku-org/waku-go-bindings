@@ -777,7 +777,7 @@ func TestStore(t *testing.T) {
 		PaginationLimit:   proto.Uint64(uint64(paginationLimit)),
 		PaginationForward: true,
 		TimeStart:         timeStart,
-		PaginationCursor:  res1.PaginationCursor,
+		PaginationCursor:  &res1.PaginationCursor,
 	}
 
 	ctx4, cancel4 := context.WithTimeout(context.Background(), requestTimeout)

@@ -8,15 +8,15 @@ type StoreQueryRequest struct {
 	TimeStart         *int64         `json:"time_start,omitempty"`
 	TimeEnd           *int64         `json:"time_end,omitempty"`
 	MessageHashes     *[]MessageHash `json:"message_hashes,omitempty"`
-	PaginationCursor  MessageHash    `json:"pagination_cursor,omitempty"`
+	PaginationCursor  *MessageHash   `json:"pagination_cursor,omitempty"`
 	PaginationForward bool           `json:"pagination_forward"`
 	PaginationLimit   *uint64        `json:"pagination_limit,omitempty"`
 }
 
 type StoreMessageResponse struct {
-	WakuMessage tmpWakuMessageJson `json:"message"`
-	PubsubTopic string             `json:"pubsubTopic"`
-	MessageHash MessageHash        `json:"messageHash"`
+	WakuMessage *tmpWakuMessageJson `json:"message"`
+	PubsubTopic string              `json:"pubsubTopic"`
+	MessageHash MessageHash         `json:"messageHash"`
 }
 
 type StoreQueryResponse struct {

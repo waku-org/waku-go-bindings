@@ -10,15 +10,17 @@ To build the required dependencies for this module, the `make` command needs to 
 
 Follow these steps to install and set up the module:
 
-1. Retrieve the module using `go get`:
+1. Make sure your system has the [prerequisites](https://docs.waku.org/guides/nwaku/build-source#prerequisites) to run a local nwaku node
+
+2. Retrieve the module using `go get`:
    ```
    go get -u github.com/waku-org/waku-go-bindings
    ```
-2. Navigate to the module's directory:
+3. Navigate to the module's directory:
    ```
    cd $(go list -m -f '{{.Dir}}' github.com/waku-org/waku-go-bindings)
    ```
-3. Build the dependencies:
+4. Build the dependencies:
    ```
    sudo make
    ```

@@ -1,4 +1,4 @@
-package testlibs
+package utilities
 
 import (
 	"math/rand"
@@ -23,7 +23,13 @@ var DefaultWakuConfig = &waku.WakuConfig{
 	ClusterID:       16,
 	Shards:          []uint16{64},
 	PeerExchange:    false,
+	Store:           false,
+	Filter:          false,
+	Lightpush:       false,
 }
+
+// WakuConfigOption is a function that applies a change to a WakuConfig.
+type WakuConfigOption func(*waku.WakuConfig)
 
 func GenerateUniquePort() int {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano())) // Local RNG instance

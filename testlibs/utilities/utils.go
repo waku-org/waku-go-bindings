@@ -31,6 +31,9 @@ var DefaultWakuConfig = &waku.WakuConfig{
 // WakuConfigOption is a function that applies a change to a WakuConfig.
 type WakuConfigOption func(*waku.WakuConfig)
 
+
+var ConnectPeerTimeout = 10 * time.Second //default timeout for node to connect to another node
+
 func GenerateUniquePort() int {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano())) // Local RNG instance
 

@@ -20,7 +20,7 @@ Follow these steps to install and set up the module:
    ```
 3. Build the dependencies:
    ```
-   sudo make
+   sudo make -C waku
    ```
 
 Now the module is ready for use in your project.

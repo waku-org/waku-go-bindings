@@ -1,7 +1,7 @@
 # Makefile for Waku Go Bindings
 
 # Directories
-THIRD_PARTY_DIR := third_party
+THIRD_PARTY_DIR := ../third_party
 NWAKU_REPO := https://github.com/waku-org/nwaku
 NWAKU_DIR := $(THIRD_PARTY_DIR)/nwaku
 
@@ -29,7 +29,7 @@ prepare:
 # Build Waku Go Bindings
 build: prepare
 	@echo "Building Waku Go Bindings..."
-	go build ./waku/...
+	go build ./...
 
 # Clean up generated files
 clean:

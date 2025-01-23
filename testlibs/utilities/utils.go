@@ -32,7 +32,6 @@ var DefaultWakuConfig = &waku.WakuConfig{
 type WakuConfigOption func(*waku.WakuConfig)
 
 
-var ConnectPeerTimeout = 10 * time.Second //default timeout for node to connect to another node
 
 func GenerateUniquePort() int {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano())) // Local RNG instance

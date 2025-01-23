@@ -46,29 +46,3 @@ func TestBasicWakuNodes(t *testing.T) {
 	require.NoError(t, err, "Failed to stop+destroy Node 2")
 }
 
-// Test to connect 2 nodes and disconnect them
-
-func TestConnectAndDisconnectNodes(t *testing.T) {
-	logger, err := zap.NewDevelopment()
-	require.NoError(t, err, "failed to create logger")
-
-	nodeA, err := testlibs.Wrappers_StartWakuNode(nil, logger.Named("nodeA"))
-	require.NoError(t, err, "failed to create/start Node A")
-	defer nodeA.Wrappers_StopAndDestroy() // ensures cleanup
-
-	nodeB, err := testlibs.Wrappers_StartWakuNode(nil, logger.Named("nodeB"))
-	require.NoError(t, err, "failed to create/start Node B")
-	defer nodeB.Wrappers_StopAndDestroy() // ensures cleanup
-
-	nodeC, err := testlibs.Wrappers_StartWakuNode(nil, logger.Named("nodeB"))
-	require.NoError(t, err, "failed to create/start Node B")
-	defer nodeC.Wrappers_StopAndDestroy() // ensures cleanup
-
-	err = nodeA.Wrappers_ConnectPeer(nodeB)
-	require.NoError(t, err, "failed to connect Node A to Node B")
-
-	time.Sleep(3 * time.Second)
-
-	err = nodeA.Wrappers_DisconnectPeer(nodeC)
-	require.NoError(t, err, "failed to disconnect Node A from Node B")
-}

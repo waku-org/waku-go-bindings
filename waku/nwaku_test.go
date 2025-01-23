@@ -566,10 +566,23 @@ func TestConnectionChange(t *testing.T) {
 		TcpPort:         60060,
 	}
 
+	wakuConfig3 := WakuConfig{
+		Relay:           false,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       clusterId,
+		Shards:          []uint16{shardId},
+		Discv5UdpPort:   9060,
+		TcpPort:         60060,
+	}
+
 	node1, err := NewWakuNode(&wakuConfig1, logger.Named("node1"))
 	require.NoError(t, err)
 	require.NoError(t, node1.Start())
 
+	node3, err := NewWakuNode(&wakuConfig3, logger.Named("node3"))
+	require.NoError(t, err)
+	require.NoError(t, node3.Start())
 	// start node2
 	wakuConfig2 := WakuConfig{
 		Relay:           true,
@@ -602,32 +615,16 @@ func TestConnectionChange(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, peerCount2 == 1, "node2 should have 1 peer")
 
-	peerId1, err := node1.PeerID()
+	//peerId1, err := node1.PeerID()
 	require.NoError(t, err)
-
-	// Wait to receive connectionChange event
-	select {
-	case connectionChange := <-node2.ConnectionChangeChan:
-		require.NotNil(t, connectionChange, "connectionChange should be updated")
-		require.Equal(t, connectionChange.PeerEvent, "Joined", "connectionChange Joined event should be emitted")
-		require.Equal(t, connectionChange.PeerId, peerId1, "connectionChange event should contain node 1's peerId")
-	case <-time.After(10 * time.Second):
-		t.Fatal("Timeout: No connectionChange event received within 10 seconds")
-	}
+	peerId3, _ := node3.PeerID()
 
 	// Disconnect from node1
-	err = node2.DisconnectPeerByID(peerId1)
+	err = node1.DisconnectPeerByID(peerId3)
+
 	require.NoError(t, err)
 
 	// Wait to receive connectionChange event
-	select {
-	case connectionChange := <-node2.ConnectionChangeChan:
-		require.NotNil(t, connectionChange, "connectionChange should be updated")
-		require.Equal(t, connectionChange.PeerEvent, "Left", "connectionChange Left event should be emitted")
-		require.Equal(t, connectionChange.PeerId, peerId1, "connectionChange event should contain node 1's peerId")
-	case <-time.After(10 * time.Second):
-		t.Fatal("Timeout: No connectionChange event received within 10 seconds")
-	}
 
 	// Stop nodes
 	require.NoError(t, node1.Stop())

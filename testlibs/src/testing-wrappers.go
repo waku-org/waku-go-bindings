@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/libp2p/go-libp2p/core/peer"
+     
 	utilities "github.com/waku-org/waku-go-bindings/testlibs/utilities"
 	"github.com/waku-org/waku-go-bindings/waku"
 	"go.uber.org/zap"
@@ -115,6 +117,33 @@ func (wrapper *WakuNodeWrapper) Wrappers_StopAndDestroy() error {
 	return nil
 }
 
+func (wrapper *WakuNodeWrapper) Wrappers_GetConnectedPeers() ([]peer.ID, error) {
+	if wrapper.WakuNode == nil {
+		err := errors.New("WakuNode is nil in WakuNodeWrapper")
+		utilities.Error("Cannot proceed; node is nil", zap.Error(err))
+		return nil, err
+	}
+
+	peerID, err := wrapper.WakuNode.PeerID()
+	if err != nil {
+		utilities.Error("Failed to get PeerID of node", zap.Error(err))
+		return nil, err
+	}
+
+	utilities.Debug("Getting number of connected peers to node", zap.String("node", peerID.String()))
+
+	peers, err := wrapper.WakuNode.GetConnectedPeers()
+	if err != nil {
+		utilities.Error("Failed to get connected peers", zap.Error(err))
+		return nil, err
+	}
+
+	utilities.Debug("Successfully fetched connected peers",
+		zap.Int("count", len(peers)),
+	)
+	return peers, nil
+}
+
 func (wrapper *WakuNodeWrapper) Wrappers_GetNumConnectedRelayPeers(optPubsubTopic ...string) (int, error) {
 	utilities.Debug("Wrappers_GetNumConnectedRelayPeers called")
 
@@ -137,62 +166,122 @@ func (wrapper *WakuNodeWrapper) Wrappers_GetNumConnectedRelayPeers(optPubsubTopi
 	return numPeers, nil
 }
 
-func (w *WakuNodeWrapper) Wrappers_ConnectPeer(target *WakuNodeWrapper) error {
-	if w.WakuNode == nil {
+func (wrapper *WakuNodeWrapper) Wrappers_ConnectPeer(targetNode *WakuNodeWrapper) error {
+
+	utilities.Debug("Connect node to peer")
+	if wrapper.WakuNode == nil {
 		err := errors.New("WakuNode is nil in caller")
 		utilities.Error("Cannot call Connect; caller node is nil", zap.Error(err))
 		return err
 	}
-	if target == nil || target.WakuNode == nil {
-		err := errors.New("target WakuNode is nil")
+	if targetNode == nil || targetNode.WakuNode == nil {
+		err := errors.New("WakuNode is nil in target")
 		utilities.Error("Cannot connect; target node is nil", zap.Error(err))
 		return err
 	}
 
-	addrs, err := target.ListenAddresses()
-	if err != nil || len(addrs) == 0 {
-		errMsg := "failed to obtain target node's listening addresses"
-		utilities.Error(errMsg, zap.String("error", err.Error()))
-		return errors.New(errMsg)
+	targetPeerID, err := targetNode.WakuNode.PeerID()
+	if err != nil {
+		utilities.Error("Failed to get PeerID of target node", zap.Error(err))
+		return err
 	}
 
-	peerAddr := addrs[0]
+	utilities.Debug("Get connected peers before attempting to connect")
 
-	utilities.Debug("Wrappers_ConnectPeer called", zap.String("targetAddr", peerAddr.String()))
+	connectedPeersBefore, err := wrapper.Wrappers_GetConnectedPeers()
+	if err != nil {
+		utilities.Debug("Could not fetch connected peers before connecting (might be none yet)", zap.Error(err))
+	} else {
+		utilities.Debug("Connected peers before connecting", zap.Int("count", len(connectedPeersBefore)))
+	}
 
+	utilities.Debug("Attempt to connect to the target node")
 	ctx, cancel := context.WithTimeout(context.Background(), utilities.ConnectPeerTimeout)
 	defer cancel()
 
-	utilities.Debug("Connecting to peer with address", zap.String("address", peerAddr.String()))
-	err = w.WakuNode.Connect(ctx, peerAddr)
+	targetAddr, err := targetNode.WakuNode.ListenAddresses()
+	if err != nil || len(targetAddr) == 0 {
+		utilities.Error("Failed to get listen addresses for target node", zap.Error(err))
+		return errors.New("target node has no listen addresses")
+	}
+
+	utilities.Debug("Connecting to peer", zap.String("address", targetAddr[0].String()))
+	err = wrapper.WakuNode.Connect(ctx, targetAddr[0])
 	if err != nil {
-		utilities.Error("Failed to connect", zap.Error(err))
+		utilities.Error("Failed to connect to peer", zap.Error(err))
 		return err
 	}
 
-	utilities.Debug("Successfully connected", zap.String("address", peerAddr.String()))
+	utilities.Debug("Get connected peers after attempting to connect")
+	connectedPeersAfter, err := wrapper.Wrappers_GetConnectedPeers()
+	if err != nil {
+		utilities.Error("Failed to get connected peers after connecting", zap.Error(err))
+		return err
+	}
+
+	utilities.Debug("Connected peers after connecting", zap.Int("count", len(connectedPeersAfter)))
+
+	utilities.Debug("Check if the target peer is now connected")
+	isConnected := false
+	for _, peerID := range connectedPeersAfter {
+		if peerID == targetPeerID {
+			isConnected = true
+			break
+		}
+	}
+
+	if !isConnected {
+		err := errors.New("failed to connect; target peer is not in connected peers list")
+		utilities.Error("Connect operation failed", zap.Error(err))
+		return err
+	}
+
+	utilities.Debug("Successfully connected to target peer", zap.String("targetPeerID", targetPeerID.String()))
 	return nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_DisconnectPeer(targetNode *WakuNodeWrapper) error {
+func (wrapper *WakuNodeWrapper) Wrappers_DisconnectPeer(target *WakuNodeWrapper) error {
+
 	if wrapper.WakuNode == nil {
-		err := errors.New("the calling WakuNode is nil")
-		utilities.Error("Cannot disconnect; calling node is nil", zap.Error(err))
+		err := errors.New("WakuNode is nil in caller")
+		utilities.Error("Cannot call Disconnect; caller node is nil", zap.Error(err))
 		return err
 	}
-	if targetNode == nil || targetNode.WakuNode == nil {
-		err := errors.New("the target WakuNode is nil")
+	if target == nil || target.WakuNode == nil {
+		err := errors.New("target WakuNode is nil")
 		utilities.Error("Cannot disconnect; target node is nil", zap.Error(err))
 		return err
 	}
 
-	peerID, err := targetNode.WakuNode.PeerID()
+	utilities.Debug("Check if nodes are peers first")
+
+	peerID, err := target.WakuNode.PeerID()
 	if err != nil {
-		utilities.Error("Failed to retrieve peer ID from target node", zap.Error(err))
+		utilities.Error("Failed to get PeerID of target node", zap.Error(err))
 		return err
 	}
 
-	utilities.Debug("Wrappers_DisconnectPeer", zap.String("peerID", peerID.String()))
+	connectedPeers, err := wrapper.Wrappers_GetConnectedPeers()
+	if err != nil {
+		utilities.Error("Failed to get connected peers", zap.Error(err))
+		return err
+	}
+
+	isPeer := false
+	for _, connectedPeerID := range connectedPeers {
+		if connectedPeerID == peerID {
+			isPeer = true
+			break
+		}
+	}
+
+	if !isPeer {
+		err = errors.New("nodes are not connected as peers")
+		utilities.Error("Cannot disconnect; nodes are not peers", zap.Error(err))
+		return err
+	}
+
+	utilities.Debug("Nodes are peers.. attempting to disconnect")
 	err = wrapper.WakuNode.DisconnectPeerByID(peerID)
 	if err != nil {
 		utilities.Error("Failed to disconnect peer", zap.Error(err))
@@ -202,3 +291,5 @@ func (wrapper *WakuNodeWrapper) Wrappers_DisconnectPeer(targetNode *WakuNodeWrap
 	utilities.Debug("Successfully disconnected peer", zap.String("peerID", peerID.String()))
 	return nil
 }
+
+

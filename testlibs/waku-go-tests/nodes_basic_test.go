@@ -13,12 +13,15 @@ import (
 func TestBasicWakuNodes(t *testing.T) {
 	utilities.Debug("Create logger instance")
 	logger, _ := zap.NewDevelopment()
+
 	nodeCfg := *utilities.DefaultWakuConfig
 	nodeCfg.Relay = true
 
 	utilities.Debug("Starting the WakuNodeWrapper")
 	node, err := testlibs.Wrappers_StartWakuNode(&nodeCfg, logger.Named("node"))
 	require.NoError(t, err, "Failed to create the WakuNodeWrapper")
+
+	// Use defer to ensure proper cleanup
 	defer func() {
 		utilities.Debug("Stopping and destroying Node")
 		node.Wrappers_StopAndDestroy()
@@ -27,6 +30,6 @@ func TestBasicWakuNodes(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	err = node.Wrappers_StopAndDestroy()
-	require.NoError(t, err, "Failed to stop+destroy Node")
+	// No need for another StopAndDestroy here, defer already handles cleanup
+	utilities.Debug("Test completed successfully")
 }

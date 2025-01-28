@@ -10,8 +10,7 @@ import (
 func (wrapper *WakuNodeWrapper) Wrappers_RelaySubscribe(pubsubTopic string) error {
 	utilities.Debug("Attempting to subscribe to relay topic", zap.String("topic", pubsubTopic))
 
-	if wrapper.WakuNode == nil {
-		err := errors.New("WakuNode is nil in WakuNodeWrapper")
+	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot subscribe; node is nil", zap.Error(err))
 		return err
 	}
@@ -36,8 +35,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_RelaySubscribe(pubsubTopic string) erro
 func (wrapper *WakuNodeWrapper) Wrappers_RelayUnsubscribe(pubsubTopic string) error {
 	utilities.Debug("Attempting to unsubscribe from relay topic", zap.String("topic", pubsubTopic))
 
-	if wrapper.WakuNode == nil {
-		err := errors.New("WakuNode is nil in WakuNodeWrapper")
+	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot unsubscribe; node is nil", zap.Error(err))
 		return err
 	}

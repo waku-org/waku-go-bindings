@@ -1,0 +1,32 @@
+package waku_go_tests
+
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+	testlibs "github.com/waku-org/waku-go-bindings/testlibs/src"
+	utilities "github.com/waku-org/waku-go-bindings/testlibs/utilities"
+	"go.uber.org/zap"
+)
+
+func TestBasicWakuNodes(t *testing.T) {
+	utilities.Debug("Create logger instance")
+	logger, _ := zap.NewDevelopment()
+	nodeCfg := *utilities.DefaultWakuConfig
+	nodeCfg.Relay = true
+
+	utilities.Debug("Starting the WakuNodeWrapper")
+	node, err := testlibs.Wrappers_StartWakuNode(&nodeCfg, logger.Named("node"))
+	require.NoError(t, err, "Failed to create the WakuNodeWrapper")
+	defer func() {
+		utilities.Debug("Stopping and destroying Node")
+		node.Wrappers_StopAndDestroy()
+	}()
+	utilities.Debug("Successfully created the WakuNodeWrapper")
+
+	time.Sleep(2 * time.Second)
+
+	err = node.Wrappers_StopAndDestroy()
+	require.NoError(t, err, "Failed to stop+destroy Node")
+}

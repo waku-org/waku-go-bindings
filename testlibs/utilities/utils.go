@@ -4,7 +4,8 @@ import (
 	"math/rand"
 	"sync"
 	"time"
-
+    "errors"
+	"go.uber.org/zap"
 	"github.com/waku-org/waku-go-bindings/waku"
 )
 
@@ -47,4 +48,16 @@ func GenerateUniquePort() int {
 		}
 		portsMutex.Unlock()
 	}
+}
+
+
+func CheckWakuNodeNull(logger *zap.Logger, node interface{}) error {
+	if node == nil {
+		err := errors.New("WakuNode instance is nil")
+		if logger != nil {
+			logger.Error("WakuNode is nil", zap.Error(err))
+		}
+		return err
+	}
+	return nil
 }

@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/libp2p/go-libp2p/core/peer"
-     
+
 	utilities "github.com/waku-org/waku-go-bindings/testlibs/utilities"
 	"github.com/waku-org/waku-go-bindings/waku"
 	"go.uber.org/zap"
@@ -38,8 +38,7 @@ func Wrappers_StartWakuNode(customCfg *waku.WakuConfig, logger *zap.Logger) (*Wa
 
 	utilities.Debug("Attempting to start WakuNode")
 	wrapper := &WakuNodeWrapper{WakuNode: node}
-	if wrapper.WakuNode == nil {
-		err := errors.New("WakuNode instance is nil")
+	if err := utilities.CheckWakuNodeNull(logger, wrapper.WakuNode); err != nil {
 		utilities.Error("Failed to start WakuNode", zap.Error(err))
 		return nil, err
 	}
@@ -54,10 +53,9 @@ func Wrappers_StartWakuNode(customCfg *waku.WakuConfig, logger *zap.Logger) (*Wa
 	return wrapper, nil
 }
 
-// Stops the WakuNode .
+// Stops the WakuNode.
 func (node *WakuNodeWrapper) Wrappers_Stop() error {
-	if node == nil || node.WakuNode == nil {
-		err := errors.New("WakuNode instance is nil")
+	if err := utilities.CheckWakuNodeNull(nil, node.WakuNode); err != nil {
 		utilities.Error("Failed to stop WakuNode", zap.Error(err))
 		return err
 	}
@@ -73,10 +71,9 @@ func (node *WakuNodeWrapper) Wrappers_Stop() error {
 	return nil
 }
 
-// Destroys the WakuNode .
+// Destroys the WakuNode.
 func (node *WakuNodeWrapper) Wrappers_Destroy() error {
-	if node == nil || node.WakuNode == nil {
-		err := errors.New("WakuNode instance is nil")
+	if err := utilities.CheckWakuNodeNull(nil, node.WakuNode); err != nil {
 		utilities.Error("Failed to destroy WakuNode", zap.Error(err))
 		return err
 	}
@@ -93,8 +90,7 @@ func (node *WakuNodeWrapper) Wrappers_Destroy() error {
 }
 
 func (wrapper *WakuNodeWrapper) Wrappers_StopAndDestroy() error {
-	if wrapper.WakuNode == nil {
-		err := errors.New("WakuNode instance is nil")
+	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Failed to stop or destroy WakuNode", zap.Error(err))
 		return err
 	}
@@ -118,8 +114,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_StopAndDestroy() error {
 }
 
 func (wrapper *WakuNodeWrapper) Wrappers_GetConnectedPeers() ([]peer.ID, error) {
-	if wrapper.WakuNode == nil {
-		err := errors.New("WakuNode is nil in WakuNodeWrapper")
+	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot proceed; node is nil", zap.Error(err))
 		return nil, err
 	}
@@ -147,10 +142,8 @@ func (wrapper *WakuNodeWrapper) Wrappers_GetConnectedPeers() ([]peer.ID, error) 
 func (wrapper *WakuNodeWrapper) Wrappers_GetNumConnectedRelayPeers(optPubsubTopic ...string) (int, error) {
 	utilities.Debug("Wrappers_GetNumConnectedRelayPeers called")
 
-	if wrapper.WakuNode == nil {
-		err := errors.New("WakuNode is nil in WakuNodeWrapper")
+	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot proceed; node is nil", zap.Error(err))
-		// Return an error immediately to “stop” the function
 		return 0, err
 	}
 
@@ -169,13 +162,11 @@ func (wrapper *WakuNodeWrapper) Wrappers_GetNumConnectedRelayPeers(optPubsubTopi
 func (wrapper *WakuNodeWrapper) Wrappers_ConnectPeer(targetNode *WakuNodeWrapper) error {
 
 	utilities.Debug("Connect node to peer")
-	if wrapper.WakuNode == nil {
-		err := errors.New("WakuNode is nil in caller")
+	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot call Connect; caller node is nil", zap.Error(err))
 		return err
 	}
-	if targetNode == nil || targetNode.WakuNode == nil {
-		err := errors.New("WakuNode is nil in target")
+	if err := utilities.CheckWakuNodeNull(nil, targetNode.WakuNode); err != nil {
 		utilities.Error("Cannot connect; target node is nil", zap.Error(err))
 		return err
 	}
@@ -242,13 +233,11 @@ func (wrapper *WakuNodeWrapper) Wrappers_ConnectPeer(targetNode *WakuNodeWrapper
 
 func (wrapper *WakuNodeWrapper) Wrappers_DisconnectPeer(target *WakuNodeWrapper) error {
 
-	if wrapper.WakuNode == nil {
-		err := errors.New("WakuNode is nil in caller")
+	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot call Disconnect; caller node is nil", zap.Error(err))
 		return err
 	}
-	if target == nil || target.WakuNode == nil {
-		err := errors.New("target WakuNode is nil")
+	if err := utilities.CheckWakuNodeNull(nil, target.WakuNode); err != nil {
 		utilities.Error("Cannot disconnect; target node is nil", zap.Error(err))
 		return err
 	}
@@ -291,5 +280,3 @@ func (wrapper *WakuNodeWrapper) Wrappers_DisconnectPeer(target *WakuNodeWrapper)
 	utilities.Debug("Successfully disconnected peer", zap.String("peerID", peerID.String()))
 	return nil
 }
-
-

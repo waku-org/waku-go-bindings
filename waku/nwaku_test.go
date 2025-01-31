@@ -854,3 +854,48 @@ func TestStore(t *testing.T) {
 	require.NoError(t, senderNode.Stop())
 	require.NoError(t, receiverNode.Stop())
 }
+
+func TestParallelPings(t *testing.T) {
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+
+	// start node that will initiate the dial
+	dialerNodeWakuConfig := WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   9080,
+		TcpPort:         60080,
+	}
+
+	dialerNode, err := NewWakuNode(&dialerNodeWakuConfig, logger.Named("dialerNode"))
+	require.NoError(t, err)
+	require.NoError(t, dialerNode.Start())
+
+	storenodes := []string{"/dns4/store-01.do-ams3.status.staging.status.im/tcp/30303/p2p/16Uiu2HAm3xVDaz6SRJ6kErwC21zBJEZjavVXg7VSkoWzaV1aMA3F",
+		"/dns4/store-01.gc-us-central1-a.status.staging.status.im/tcp/30303/p2p/16Uiu2HAmB7Ur9HQqo3cWDPovRQjo57fxWWDaQx27WxSzDGhN4JKg",
+		"/dns4/store-01.ac-cn-hongkong-c.status.staging.status.im/tcp/30303/p2p/16Uiu2HAmMU7Y29oL6DmoJfBFv8J4JhYzYgazPL7nGKJFBV3qcj2E"}
+
+	// node.PingPeer(ctx, peerInfo)
+	for _, storenode := range storenodes {
+
+		addrInfo, err := peer.AddrInfoFromString(storenode)
+		require.NoError(t, err)
+
+		go func(peerInfo peer.AddrInfo) {
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			defer cancel()
+
+			_, err := dialerNode.PingPeer(ctx, peerInfo)
+			if err == nil { // pinging storenodes might fail, but we don't care
+				fmt.Println("------ failed pinging node: ", err)
+			}
+		}(*addrInfo)
+
+	}
+
+	// Stop nodes
+	require.NoError(t, dialerNode.Stop())
+}

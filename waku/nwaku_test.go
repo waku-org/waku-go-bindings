@@ -889,7 +889,7 @@ func TestParallelPings(t *testing.T) {
 			defer cancel()
 
 			_, err := dialerNode.PingPeer(ctx, peerInfo)
-			if err == nil { // pinging storenodes might fail, but we don't care
+			if err != nil { // pinging storenodes might fail, but we don't care
 				fmt.Println("------ failed pinging node: ", err)
 			}
 		}(*addrInfo)

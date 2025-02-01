@@ -9,6 +9,7 @@ import (
 	"github.com/waku-org/go-waku/waku/v2/protocol/pb"
 	utilities "github.com/waku-org/waku-go-bindings/testlibs/utilities"
 	"github.com/waku-org/waku-go-bindings/waku"
+	"github.com/waku-org/waku-go-bindings/waku/common"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
@@ -378,4 +379,34 @@ func (wrapper *WakuNodeWrapper) Wrappers_CreateMessage() *pb.WakuMessage {
 
 	utilities.Debug("Successfully created a valid WakuMessage")
 	return message
+}
+
+func (wrapper *WakuNodeWrapper) Wrappers_VerifyMessageReceived(expectedMessage *pb.WakuMessage, expectedHash common.MessageHash) error {
+	logger, _ := zap.NewDevelopment()
+	logger.Debug("Verifying if the message was received")
+
+	select {
+	case envelope := <-wrapper.MsgChan:
+		if envelope == nil {
+			logger.Debug("Received envelope is nil")
+			return errors.New("received envelope is nil")
+		}
+		if string(expectedMessage.Payload) != string(envelope.Message().Payload) {
+			logger.Debug("Payload does not match")
+			return errors.New("payload does not match")
+		}
+		if expectedMessage.ContentTopic != envelope.Message().ContentTopic {
+			logger.Debug("Content topic does not match")
+			return errors.New("content topic does not match")
+		}
+		if expectedHash != envelope.Hash() {
+			logger.Debug("Message hash does not match")
+			return errors.New("message hash does not match")
+		}
+		logger.Debug("Message received and verified successfully")
+		return nil
+	case <-time.After(5 * time.Second):
+		logger.Debug("Timeout: message not received within 5 seconds")
+		return errors.New("timeout: message not received within 5 seconds")
+	}
 }

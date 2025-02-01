@@ -28,7 +28,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_RelaySubscribe(pubsubTopic string) erro
 	// Ensure the subscription happened by checking the number of connected relay peers
 	numRelayPeers, err := wrapper.Wrappers_GetNumConnectedRelayPeers(pubsubTopic)
 	if err != nil || numRelayPeers == 0 {
-		utilities.Error("Subscription verification failed: no connected relay peers found", zap.Error(err))
+		//utilities.Error("Subscription verification failed: no connected relay peers found", zap.Error(err))
 		return errors.New("subscription verification failed: no connected relay peers")
 	}
 

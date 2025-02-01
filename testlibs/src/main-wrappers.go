@@ -3,12 +3,14 @@ package testlibs
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
-
+	"github.com/waku-org/go-waku/waku/v2/protocol/pb"
 	utilities "github.com/waku-org/waku-go-bindings/testlibs/utilities"
 	"github.com/waku-org/waku-go-bindings/waku"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 type WakuNodeWrapper struct {
@@ -345,4 +347,35 @@ func (wrapper *WakuNodeWrapper) Wrappers_StopDiscV5() error {
 
 	utilities.Debug("Successfully stopped Discovery V5")
 	return nil
+}
+
+func (wrapper *WakuNodeWrapper) Wrappers_Version() (string, error) {
+	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
+		utilities.Error("cannot get version; node is nil", zap.Error(err))
+		return "", err
+	}
+
+	utilities.Debug("Attempting to retrieve Waku node version")
+	version, err := wrapper.WakuNode.Version()
+	if err != nil {
+		utilities.Error("failed to retrieve Waku node version", zap.Error(err))
+		return "", err
+	}
+
+	utilities.Debug("Successfully retrieved Waku node version", zap.String("version", version))
+	return version, nil
+}
+
+func (wrapper *WakuNodeWrapper) Wrappers_CreateMessage() *pb.WakuMessage {
+	utilities.Debug("Creating a WakuMessage with valid format and payload")
+
+	message := &pb.WakuMessage{
+		Payload:      []byte("This is a valid Waku message payload"),
+		ContentTopic: "test-content-topic",
+		Version:      proto.Uint32(0),
+		Timestamp:    proto.Int64(time.Now().UnixNano()),
+	}
+
+	utilities.Debug("Successfully created a valid WakuMessage")
+	return message
 }

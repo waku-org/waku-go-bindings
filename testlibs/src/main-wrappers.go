@@ -367,18 +367,25 @@ func (wrapper *WakuNodeWrapper) Wrappers_Version() (string, error) {
 	return version, nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_CreateMessage() *pb.WakuMessage {
-	utilities.Debug("Creating a WakuMessage with valid format and payload")
+func (wrapper *WakuNodeWrapper) Wrappers_CreateMessage(customMessage ...*pb.WakuMessage) *pb.WakuMessage {
+	logger, _ := zap.NewDevelopment()
+	logger.Debug("Creating a WakuMessage")
 
-	message := &pb.WakuMessage{
-		Payload:      []byte("This is a valid Waku message payload"),
+	if len(customMessage) > 0 && customMessage[0] != nil {
+		logger.Debug("Using provided custom message")
+		return customMessage[0]
+	}
+
+	logger.Debug("Using default message format")
+	defaultMessage := &pb.WakuMessage{
+		Payload:      []byte("This is a default Waku message payload"),
 		ContentTopic: "test-content-topic",
 		Version:      proto.Uint32(0),
 		Timestamp:    proto.Int64(time.Now().UnixNano()),
 	}
 
-	utilities.Debug("Successfully created a valid WakuMessage")
-	return message
+	logger.Debug("Successfully created a default WakuMessage")
+	return defaultMessage
 }
 
 func (wrapper *WakuNodeWrapper) Wrappers_VerifyMessageReceived(expectedMessage *pb.WakuMessage, expectedHash common.MessageHash) error {
@@ -409,4 +416,23 @@ func (wrapper *WakuNodeWrapper) Wrappers_VerifyMessageReceived(expectedMessage *
 		logger.Debug("Timeout: message not received within 5 seconds")
 		return errors.New("timeout: message not received within 5 seconds")
 	}
+}
+
+func Wrappers_ConnectAllPeers(nodes []*WakuNodeWrapper) error {
+	logger, _ := zap.NewDevelopment()
+	logger.Debug("Connecting nodes in a relay chain")
+
+	for i := 0; i < len(nodes)-1; i++ {
+		logger.Debug("Connecting node", zap.Int("from", i), zap.Int("to", i+1))
+		err := nodes[i].Wrappers_ConnectPeer(nodes[i+1])
+		if err != nil {
+			logger.Debug("Failed to connect nodes", zap.Error(err))
+			return err
+		}
+	}
+
+	time.Sleep(4 * time.Second)
+	logger.Debug("Waiting for connections to stabilize")
+
+	return nil
 }

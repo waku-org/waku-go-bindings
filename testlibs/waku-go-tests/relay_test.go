@@ -5,9 +5,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/waku-org/go-waku/waku/v2/protocol/pb"
 	testlibs "github.com/waku-org/waku-go-bindings/testlibs/src"
 	utilities "github.com/waku-org/waku-go-bindings/testlibs/utilities"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestRelaySubscribeToDefaultTopic(t *testing.T) {
@@ -85,4 +87,110 @@ func TestRelayMessageTransmission(t *testing.T) {
 	require.NoError(t, err, "message verification failed")
 
 	logger.Debug("TestRelayMessageTransmission completed successfully")
+}
+
+func TestRelayMessageBroadcast(t *testing.T) {
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+	logger.Debug("Starting TestRelayMessageBroadcast")
+
+	numPeers := 5
+	nodes := make([]*testlibs.WakuNodeWrapper, numPeers)
+	nodeNames := []string{"SenderNode", "PeerNode1", "PeerNode2", "PeerNode3", "PeerNode4"}
+
+	defaultPubsubTopic := utilities.DefaultPubsubTopic
+
+	for i := 0; i < numPeers; i++ {
+		logger.Debug("Creating node", zap.String("node", nodeNames[i]))
+
+		nodeConfig := *utilities.DefaultWakuConfig
+		nodeConfig.Relay = true
+
+		node, err := testlibs.Wrappers_StartWakuNode(&nodeConfig, logger.Named(nodeNames[i]))
+		require.NoError(t, err)
+		defer node.Wrappers_StopAndDestroy()
+
+		nodes[i] = node
+	}
+
+	err = testlibs.Wrappers_ConnectAllPeers(nodes)
+	require.NoError(t, err)
+
+	logger.Debug("Subscribing nodes to the default pubsub topic")
+	for _, node := range nodes {
+		err := node.Wrappers_RelaySubscribe(defaultPubsubTopic)
+		require.NoError(t, err)
+	}
+
+	senderNode := nodes[0]
+	logger.Debug("SenderNode is publishing a message")
+	message := senderNode.Wrappers_CreateMessage()
+	msgHash, err := senderNode.Wrappers_RelayPublish(defaultPubsubTopic, message)
+	require.NoError(t, err)
+	require.NotEmpty(t, msgHash)
+
+	logger.Debug("Waiting to ensure message delivery")
+	time.Sleep(3 * time.Second)
+
+	logger.Debug("Verifying message reception for each node")
+	for i, node := range nodes {
+		logger.Debug("Verifying message for node", zap.String("node", nodeNames[i]))
+		err := node.Wrappers_VerifyMessageReceived(message, msgHash)
+		require.NoError(t, err, "message verification failed for node: "+nodeNames[i])
+	}
+
+	logger.Debug("TestRelayMessageBroadcast completed successfully")
+}
+
+func TestSendmsgInvalidPayload(t *testing.T) {
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+	logger.Debug("Starting TestInvalidMessageFormat")
+
+	nodeNames := []string{"SenderNode", "PeerNode1"}
+
+	defaultPubsubTopic := utilities.DefaultPubsubTopic
+
+	logger.Debug("Creating nodes")
+	senderNodeConfig := *utilities.DefaultWakuConfig
+	senderNodeConfig.Relay = true
+	senderNode, err := testlibs.Wrappers_StartWakuNode(&senderNodeConfig, logger.Named(nodeNames[0]))
+	require.NoError(t, err)
+	defer senderNode.Wrappers_StopAndDestroy()
+
+	receiverNodeConfig := *utilities.DefaultWakuConfig
+	receiverNodeConfig.Relay = true
+
+	receiverNode, err := testlibs.Wrappers_StartWakuNode(&receiverNodeConfig, logger.Named(nodeNames[1]))
+	require.NoError(t, err)
+	defer receiverNode.Wrappers_StopAndDestroy()
+
+	logger.Debug("Connecting SenderNode and PeerNode1")
+	err = senderNode.Wrappers_ConnectPeer(receiverNode)
+	require.NoError(t, err)
+
+	logger.Debug("Subscribing SenderNode to the default pubsub topic")
+	err = senderNode.Wrappers_RelaySubscribe(defaultPubsubTopic)
+	require.NoError(t, err)
+
+	logger.Debug("SenderNode is publishing an invalid message")
+	invalidMessage := &pb.WakuMessage{
+		Payload: []byte{}, // Empty payload
+		Version: proto.Uint32(0),
+	}
+
+	message := senderNode.Wrappers_CreateMessage(invalidMessage)
+
+	msgHash, err := senderNode.Wrappers_RelayPublish(defaultPubsubTopic, message)
+
+	logger.Debug("Verifying if message was sent or failed")
+	if err != nil {
+		logger.Debug("Message was not sent due to invalid format", zap.Error(err))
+		require.Error(t, err, "message should fail due to invalid format")
+	} else {
+		logger.Debug("Message was unexpectedly sent", zap.String("messageHash", msgHash.String()))
+		require.Fail(t, "message with invalid format should not be sent")
+	}
+
+	logger.Debug("TestInvalidMessageFormat completed")
 }

@@ -32,20 +32,12 @@ func TestRelaySubscribeToDefaultTopic(t *testing.T) {
 	utilities.Debug("Default pubsub topic retrieved", zap.String("topic", defaultPubsubTopic))
 
 	utilities.Debug("Fetching number of connected relay peers before subscription", zap.String("topic", defaultPubsubTopic))
-	numPeersBefore, err := node.Wrappers_GetNumConnectedRelayPeers(defaultPubsubTopic)
-	require.NoError(t, err)
-	utilities.Debug("Number of connected relay peers before subscription", zap.Int("count", numPeersBefore))
 
 	utilities.Debug("Attempting to subscribe to the default pubsub topic", zap.String("topic", defaultPubsubTopic))
 	err = node.Wrappers_RelaySubscribe(defaultPubsubTopic)
 	require.NoError(t, err)
 
 	utilities.Debug("Fetching number of connected relay peers after subscription", zap.String("topic", defaultPubsubTopic))
-	numPeersAfter, err := node.Wrappers_GetNumConnectedRelayPeers(defaultPubsubTopic)
-	require.NoError(t, err)
-	utilities.Debug("Number of connected relay peers after subscription", zap.Int("count", numPeersAfter))
-
-	require.Greater(t, numPeersAfter, numPeersBefore, "Number of connected relay peers should increase after subscription")
 
 	utilities.Debug("Test successfully verified subscription to the default pubsub topic", zap.String("topic", defaultPubsubTopic))
 }

@@ -20,27 +20,27 @@ func TestRelaySubscribeToDefaultTopic(t *testing.T) {
 	wakuConfig.Relay = true
 
 	utilities.Debug("Creating a Waku node with relay enabled")
-	node, err := testlibs.Wrappers_StartWakuNode(&wakuConfig, logger.Named("TestNode"))
+	node, err := testlibs.StartWakuNode(&wakuConfig, logger.Named("TestNode"))
 	require.NoError(t, err)
 	defer func() {
 		utilities.Debug("Stopping and destroying the Waku node")
-		node.Wrappers_StopAndDestroy()
+		node.StopAndDestroy()
 	}()
 
 	defaultPubsubTopic := utilities.DefaultPubsubTopic
 	utilities.Debug("Default pubsub topic retrieved", zap.String("topic", defaultPubsubTopic))
 
 	utilities.Debug("Fetching number of connected relay peers before subscription", zap.String("topic", defaultPubsubTopic))
-	numPeersBefore, err := node.Wrappers_GetNumConnectedRelayPeers(defaultPubsubTopic)
+	numPeersBefore, err := node.GetNumConnectedRelayPeers(defaultPubsubTopic)
 	require.NoError(t, err)
 	utilities.Debug("Number of connected relay peers before subscription", zap.Int("count", numPeersBefore))
 
 	utilities.Debug("Attempting to subscribe to the default pubsub topic", zap.String("topic", defaultPubsubTopic))
-	err = node.Wrappers_RelaySubscribe(defaultPubsubTopic)
+	err = node.RelaySubscribe(defaultPubsubTopic)
 	require.NoError(t, err)
 
 	utilities.Debug("Fetching number of connected relay peers after subscription", zap.String("topic", defaultPubsubTopic))
-	numPeersAfter, err := node.Wrappers_GetNumConnectedRelayPeers(defaultPubsubTopic)
+	numPeersAfter, err := node.GetNumConnectedRelayPeers(defaultPubsubTopic)
 	require.NoError(t, err)
 	utilities.Debug("Number of connected relay peers after subscription", zap.Int("count", numPeersAfter))
 

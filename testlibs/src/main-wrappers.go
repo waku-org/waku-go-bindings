@@ -5,19 +5,19 @@ import (
 	"errors"
 
 	"github.com/libp2p/go-libp2p/core/peer"
-
 	utilities "github.com/waku-org/waku-go-bindings/testlibs/utilities"
 	"github.com/waku-org/waku-go-bindings/waku"
+
 	"go.uber.org/zap"
 )
 
 type WakuNodeWrapper struct {
 	*waku.WakuNode
+	config *waku.WakuConfig
 }
 
 // This function create waku node from config and start it
-func Wrappers_StartWakuNode(customCfg *waku.WakuConfig, logger *zap.Logger) (*WakuNodeWrapper, error) {
-
+func StartWakuNode(customCfg *waku.WakuConfig, logger *zap.Logger) (*WakuNodeWrapper, error) {
 	var nodeCfg waku.WakuConfig
 
 	if customCfg == nil {
@@ -29,15 +29,16 @@ func Wrappers_StartWakuNode(customCfg *waku.WakuConfig, logger *zap.Logger) (*Wa
 	nodeCfg.Discv5UdpPort = utilities.GenerateUniquePort()
 	nodeCfg.TcpPort = utilities.GenerateUniquePort()
 
-	utilities.Debug("Create node with default config")
+	utilities.Debug("Create node successfully")
 	node, err := waku.NewWakuNode(&nodeCfg, logger)
 	if err != nil {
-		utilities.Error("Can't create node")
+		utilities.Error("Can't create node", zap.Error(err))
 		return nil, err
 	}
 
 	utilities.Debug("Attempting to start WakuNode")
-	wrapper := &WakuNodeWrapper{WakuNode: node}
+	wrapper := &WakuNodeWrapper{WakuNode: node, config: &nodeCfg} // Store config in wrapper
+
 	if err := utilities.CheckWakuNodeNull(logger, wrapper.WakuNode); err != nil {
 		utilities.Error("Failed to start WakuNode", zap.Error(err))
 		return nil, err
@@ -54,7 +55,7 @@ func Wrappers_StartWakuNode(customCfg *waku.WakuConfig, logger *zap.Logger) (*Wa
 }
 
 // Stops the WakuNode.
-func (node *WakuNodeWrapper) Wrappers_Stop() error {
+func (node *WakuNodeWrapper) Stop() error {
 	if err := utilities.CheckWakuNodeNull(nil, node.WakuNode); err != nil {
 		utilities.Error("Failed to stop WakuNode", zap.Error(err))
 		return err
@@ -72,7 +73,7 @@ func (node *WakuNodeWrapper) Wrappers_Stop() error {
 }
 
 // Destroys the WakuNode.
-func (node *WakuNodeWrapper) Wrappers_Destroy() error {
+func (node *WakuNodeWrapper) Destroy() error {
 	if err := utilities.CheckWakuNodeNull(nil, node.WakuNode); err != nil {
 		utilities.Error("Failed to destroy WakuNode", zap.Error(err))
 		return err
@@ -89,7 +90,7 @@ func (node *WakuNodeWrapper) Wrappers_Destroy() error {
 	return nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_StopAndDestroy() error {
+func (wrapper *WakuNodeWrapper) StopAndDestroy() error {
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Failed to stop or destroy WakuNode", zap.Error(err))
 		return err
@@ -113,7 +114,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_StopAndDestroy() error {
 	return nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_GetConnectedPeers() ([]peer.ID, error) {
+func (wrapper *WakuNodeWrapper) GetConnectedPeers() ([]peer.ID, error) {
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot proceed; node is nil", zap.Error(err))
 		return nil, err
@@ -139,8 +140,8 @@ func (wrapper *WakuNodeWrapper) Wrappers_GetConnectedPeers() ([]peer.ID, error) 
 	return peers, nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_GetNumConnectedRelayPeers(optPubsubTopic ...string) (int, error) {
-	utilities.Debug("Wrappers_GetNumConnectedRelayPeers called")
+func (wrapper *WakuNodeWrapper) GetNumConnectedRelayPeers(optPubsubTopic ...string) (int, error) {
+	utilities.Debug("GetNumConnectedRelayPeers called")
 
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot proceed; node is nil", zap.Error(err))
@@ -159,7 +160,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_GetNumConnectedRelayPeers(optPubsubTopi
 	return numPeers, nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_ConnectPeer(targetNode *WakuNodeWrapper) error {
+func (wrapper *WakuNodeWrapper) ConnectPeer(targetNode *WakuNodeWrapper) error {
 
 	utilities.Debug("Connect node to peer")
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
@@ -179,7 +180,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_ConnectPeer(targetNode *WakuNodeWrapper
 
 	utilities.Debug("Get connected peers before attempting to connect")
 
-	connectedPeersBefore, err := wrapper.Wrappers_GetConnectedPeers()
+	connectedPeersBefore, err := wrapper.GetConnectedPeers()
 	if err != nil {
 		utilities.Debug("Could not fetch connected peers before connecting (might be none yet)", zap.Error(err))
 	} else {
@@ -204,7 +205,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_ConnectPeer(targetNode *WakuNodeWrapper
 	}
 
 	utilities.Debug("Get connected peers after attempting to connect")
-	connectedPeersAfter, err := wrapper.Wrappers_GetConnectedPeers()
+	connectedPeersAfter, err := wrapper.GetConnectedPeers()
 	if err != nil {
 		utilities.Error("Failed to get connected peers after connecting", zap.Error(err))
 		return err
@@ -231,7 +232,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_ConnectPeer(targetNode *WakuNodeWrapper
 	return nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_DisconnectPeer(target *WakuNodeWrapper) error {
+func (wrapper *WakuNodeWrapper) DisconnectPeer(target *WakuNodeWrapper) error {
 
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot call Disconnect; caller node is nil", zap.Error(err))
@@ -250,7 +251,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_DisconnectPeer(target *WakuNodeWrapper)
 		return err
 	}
 
-	connectedPeers, err := wrapper.Wrappers_GetConnectedPeers()
+	connectedPeers, err := wrapper.GetConnectedPeers()
 	if err != nil {
 		utilities.Error("Failed to get connected peers", zap.Error(err))
 		return err

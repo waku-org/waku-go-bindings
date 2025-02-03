@@ -20,7 +20,7 @@ type WakuNodeWrapper struct {
 }
 
 // This function create waku node from config and start it
-func Wrappers_StartWakuNode(customCfg *waku.WakuConfig, logger *zap.Logger) (*WakuNodeWrapper, error) {
+func StartWakuNode(customCfg *waku.WakuConfig, logger *zap.Logger) (*WakuNodeWrapper, error) {
 	var nodeCfg waku.WakuConfig
 
 	if customCfg == nil {
@@ -32,10 +32,10 @@ func Wrappers_StartWakuNode(customCfg *waku.WakuConfig, logger *zap.Logger) (*Wa
 	nodeCfg.Discv5UdpPort = utilities.GenerateUniquePort()
 	nodeCfg.TcpPort = utilities.GenerateUniquePort()
 
-	utilities.Debug("Create node with default config")
+	utilities.Debug("Create node successfully")
 	node, err := waku.NewWakuNode(&nodeCfg, logger)
 	if err != nil {
-		utilities.Error("Can't create node")
+		utilities.Error("Can't create node", zap.Error(err))
 		return nil, err
 	}
 
@@ -58,7 +58,7 @@ func Wrappers_StartWakuNode(customCfg *waku.WakuConfig, logger *zap.Logger) (*Wa
 }
 
 // Stops the WakuNode.
-func (node *WakuNodeWrapper) Wrappers_Stop() error {
+func (node *WakuNodeWrapper) Stop() error {
 	if err := utilities.CheckWakuNodeNull(nil, node.WakuNode); err != nil {
 		utilities.Error("Failed to stop WakuNode", zap.Error(err))
 		return err
@@ -76,7 +76,7 @@ func (node *WakuNodeWrapper) Wrappers_Stop() error {
 }
 
 // Destroys the WakuNode.
-func (node *WakuNodeWrapper) Wrappers_Destroy() error {
+func (node *WakuNodeWrapper) Destroy() error {
 	if err := utilities.CheckWakuNodeNull(nil, node.WakuNode); err != nil {
 		utilities.Error("Failed to destroy WakuNode", zap.Error(err))
 		return err
@@ -93,7 +93,7 @@ func (node *WakuNodeWrapper) Wrappers_Destroy() error {
 	return nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_StopAndDestroy() error {
+func (wrapper *WakuNodeWrapper) StopAndDestroy() error {
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Failed to stop or destroy WakuNode", zap.Error(err))
 		return err
@@ -117,7 +117,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_StopAndDestroy() error {
 	return nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_GetConnectedPeers() ([]peer.ID, error) {
+func (wrapper *WakuNodeWrapper) GetConnectedPeers() ([]peer.ID, error) {
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot proceed; node is nil", zap.Error(err))
 		return nil, err
@@ -143,8 +143,8 @@ func (wrapper *WakuNodeWrapper) Wrappers_GetConnectedPeers() ([]peer.ID, error) 
 	return peers, nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_GetNumConnectedRelayPeers(optPubsubTopic ...string) (int, error) {
-	utilities.Debug("Wrappers_GetNumConnectedRelayPeers called")
+func (wrapper *WakuNodeWrapper) GetNumConnectedRelayPeers(optPubsubTopic ...string) (int, error) {
+	utilities.Debug("GetNumConnectedRelayPeers called")
 
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot proceed; node is nil", zap.Error(err))
@@ -163,7 +163,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_GetNumConnectedRelayPeers(optPubsubTopi
 	return numPeers, nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_ConnectPeer(targetNode *WakuNodeWrapper) error {
+func (wrapper *WakuNodeWrapper) ConnectPeer(targetNode *WakuNodeWrapper) error {
 
 	utilities.Debug("Connect node to peer")
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
@@ -183,7 +183,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_ConnectPeer(targetNode *WakuNodeWrapper
 
 	utilities.Debug("Get connected peers before attempting to connect")
 
-	connectedPeersBefore, err := wrapper.Wrappers_GetConnectedPeers()
+	connectedPeersBefore, err := wrapper.GetConnectedPeers()
 	if err != nil {
 		utilities.Debug("Could not fetch connected peers before connecting (might be none yet)", zap.Error(err))
 	} else {
@@ -208,7 +208,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_ConnectPeer(targetNode *WakuNodeWrapper
 	}
 
 	utilities.Debug("Get connected peers after attempting to connect")
-	connectedPeersAfter, err := wrapper.Wrappers_GetConnectedPeers()
+	connectedPeersAfter, err := wrapper.GetConnectedPeers()
 	if err != nil {
 		utilities.Error("Failed to get connected peers after connecting", zap.Error(err))
 		return err
@@ -235,7 +235,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_ConnectPeer(targetNode *WakuNodeWrapper
 	return nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_DisconnectPeer(target *WakuNodeWrapper) error {
+func (wrapper *WakuNodeWrapper) DisconnectPeer(target *WakuNodeWrapper) error {
 
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot call Disconnect; caller node is nil", zap.Error(err))
@@ -254,7 +254,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_DisconnectPeer(target *WakuNodeWrapper)
 		return err
 	}
 
-	connectedPeers, err := wrapper.Wrappers_GetConnectedPeers()
+	connectedPeers, err := wrapper.GetConnectedPeers()
 	if err != nil {
 		utilities.Error("Failed to get connected peers", zap.Error(err))
 		return err
@@ -286,7 +286,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_DisconnectPeer(target *WakuNodeWrapper)
 }
 
 // Wrapper for Peer Exchange Request
-func (wrapper *WakuNodeWrapper) Wrappers_PeerExchangeRequest(numPeers uint64) (uint64, error) {
+func (wrapper *WakuNodeWrapper) PeerExchangeRequest(numPeers uint64) (uint64, error) {
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot perform peer exchange; node is nil", zap.Error(err))
 		return 0, err
@@ -304,7 +304,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_PeerExchangeRequest(numPeers uint64) (u
 }
 
 // Wrapper for Start Discovery V5
-func (wrapper *WakuNodeWrapper) Wrappers_StartDiscV5() error {
+func (wrapper *WakuNodeWrapper) StartDiscV5() error {
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot start Discovery V5; node is nil", zap.Error(err))
 		return err
@@ -327,7 +327,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_StartDiscV5() error {
 }
 
 // Wrapper for Stop Discovery V5
-func (wrapper *WakuNodeWrapper) Wrappers_StopDiscV5() error {
+func (wrapper *WakuNodeWrapper) StopDiscV5() error {
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("Cannot stop Discovery V5; node is nil", zap.Error(err))
 		return err
@@ -350,7 +350,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_StopDiscV5() error {
 	return nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_Version() (string, error) {
+func (wrapper *WakuNodeWrapper) Version() (string, error) {
 	if err := utilities.CheckWakuNodeNull(nil, wrapper.WakuNode); err != nil {
 		utilities.Error("cannot get version; node is nil", zap.Error(err))
 		return "", err
@@ -367,7 +367,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_Version() (string, error) {
 	return version, nil
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_CreateMessage(customMessage ...*pb.WakuMessage) *pb.WakuMessage {
+func (wrapper *WakuNodeWrapper) CreateMessage(customMessage ...*pb.WakuMessage) *pb.WakuMessage {
 	logger, _ := zap.NewDevelopment()
 	logger.Debug("Creating a WakuMessage")
 
@@ -388,7 +388,7 @@ func (wrapper *WakuNodeWrapper) Wrappers_CreateMessage(customMessage ...*pb.Waku
 	return defaultMessage
 }
 
-func (wrapper *WakuNodeWrapper) Wrappers_VerifyMessageReceived(expectedMessage *pb.WakuMessage, expectedHash common.MessageHash) error {
+func (wrapper *WakuNodeWrapper) VerifyMessageReceived(expectedMessage *pb.WakuMessage, expectedHash common.MessageHash) error {
 	logger, _ := zap.NewDevelopment()
 	logger.Debug("Verifying if the message was received")
 
@@ -418,13 +418,13 @@ func (wrapper *WakuNodeWrapper) Wrappers_VerifyMessageReceived(expectedMessage *
 	}
 }
 
-func Wrappers_ConnectAllPeers(nodes []*WakuNodeWrapper) error {
+func ConnectAllPeers(nodes []*WakuNodeWrapper) error {
 	logger, _ := zap.NewDevelopment()
 	logger.Debug("Connecting nodes in a relay chain")
 
 	for i := 0; i < len(nodes)-1; i++ {
 		logger.Debug("Connecting node", zap.Int("from", i), zap.Int("to", i+1))
-		err := nodes[i].Wrappers_ConnectPeer(nodes[i+1])
+		err := nodes[i].ConnectPeer(nodes[i+1])
 		if err != nil {
 			logger.Debug("Failed to connect nodes", zap.Error(err))
 			return err

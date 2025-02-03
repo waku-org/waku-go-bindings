@@ -23,11 +23,11 @@ func TestRelaySubscribeToDefaultTopic(t *testing.T) {
 	wakuConfig.Relay = true
 
 	utilities.Debug("Creating a Waku node with relay enabled")
-	node, err := testlibs.Wrappers_StartWakuNode(&wakuConfig, logger.Named("TestNode"))
+	node, err := testlibs.StartWakuNode(&wakuConfig, logger.Named("TestNode"))
 	require.NoError(t, err)
 	defer func() {
 		utilities.Debug("Stopping and destroying the Waku node")
-		node.Wrappers_StopAndDestroy()
+		node.StopAndDestroy()
 	}()
 
 	defaultPubsubTopic := utilities.DefaultPubsubTopic
@@ -36,7 +36,7 @@ func TestRelaySubscribeToDefaultTopic(t *testing.T) {
 	utilities.Debug("Fetching number of connected relay peers before subscription", zap.String("topic", defaultPubsubTopic))
 
 	utilities.Debug("Attempting to subscribe to the default pubsub topic", zap.String("topic", defaultPubsubTopic))
-	err = node.Wrappers_RelaySubscribe(defaultPubsubTopic)
+	err = node.RelaySubscribe(defaultPubsubTopic)
 	require.NoError(t, err)
 
 	utilities.Debug("Fetching number of connected relay peers after subscription", zap.String("topic", defaultPubsubTopic))
@@ -53,29 +53,29 @@ func TestRelayMessageTransmission(t *testing.T) {
 	// Configuration for sender node
 	senderConfig := *utilities.DefaultWakuConfig
 	senderConfig.Relay = true
-	senderNode, err := testlibs.Wrappers_StartWakuNode(&senderConfig, logger.Named("SenderNode"))
+	senderNode, err := testlibs.StartWakuNode(&senderConfig, logger.Named("SenderNode"))
 	require.NoError(t, err)
-	defer senderNode.Wrappers_StopAndDestroy()
+	defer senderNode.StopAndDestroy()
 
 	// Configuration for receiver node
 	receiverConfig := *utilities.DefaultWakuConfig
 	receiverConfig.Relay = true
-	receiverNode, err := testlibs.Wrappers_StartWakuNode(&receiverConfig, logger.Named("ReceiverNode"))
+	receiverNode, err := testlibs.StartWakuNode(&receiverConfig, logger.Named("ReceiverNode"))
 	require.NoError(t, err)
-	defer receiverNode.Wrappers_StopAndDestroy()
+	defer receiverNode.StopAndDestroy()
 
 	logger.Debug("Connecting sender and receiver")
-	err = senderNode.Wrappers_ConnectPeer(receiverNode)
+	err = senderNode.ConnectPeer(receiverNode)
 	require.NoError(t, err)
 
 	logger.Debug("Subscribing receiver to the default pubsub topic")
 	defaultPubsubTopic := utilities.DefaultPubsubTopic
-	err = receiverNode.Wrappers_RelaySubscribe(defaultPubsubTopic)
+	err = receiverNode.RelaySubscribe(defaultPubsubTopic)
 	require.NoError(t, err)
 
 	logger.Debug("Creating and publishing message")
-	message := senderNode.Wrappers_CreateMessage()
-	msgHash, err := senderNode.Wrappers_RelayPublish(defaultPubsubTopic, message)
+	message := senderNode.CreateMessage()
+	msgHash, err := senderNode.RelayPublish(defaultPubsubTopic, message)
 	require.NoError(t, err)
 	require.NotEmpty(t, msgHash)
 
@@ -83,7 +83,7 @@ func TestRelayMessageTransmission(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	logger.Debug("Verifying message reception using the new wrapper")
-	err = receiverNode.Wrappers_VerifyMessageReceived(message, msgHash)
+	err = receiverNode.VerifyMessageReceived(message, msgHash)
 	require.NoError(t, err, "message verification failed")
 
 	logger.Debug("TestRelayMessageTransmission completed successfully")
@@ -106,26 +106,26 @@ func TestRelayMessageBroadcast(t *testing.T) {
 		nodeConfig := *utilities.DefaultWakuConfig
 		nodeConfig.Relay = true
 
-		node, err := testlibs.Wrappers_StartWakuNode(&nodeConfig, logger.Named(nodeNames[i]))
+		node, err := testlibs.StartWakuNode(&nodeConfig, logger.Named(nodeNames[i]))
 		require.NoError(t, err)
-		defer node.Wrappers_StopAndDestroy()
+		defer node.StopAndDestroy()
 
 		nodes[i] = node
 	}
 
-	err = testlibs.Wrappers_ConnectAllPeers(nodes)
+	err = testlibs.ConnectAllPeers(nodes)
 	require.NoError(t, err)
 
 	logger.Debug("Subscribing nodes to the default pubsub topic")
 	for _, node := range nodes {
-		err := node.Wrappers_RelaySubscribe(defaultPubsubTopic)
+		err := node.RelaySubscribe(defaultPubsubTopic)
 		require.NoError(t, err)
 	}
 
 	senderNode := nodes[0]
 	logger.Debug("SenderNode is publishing a message")
-	message := senderNode.Wrappers_CreateMessage()
-	msgHash, err := senderNode.Wrappers_RelayPublish(defaultPubsubTopic, message)
+	message := senderNode.CreateMessage()
+	msgHash, err := senderNode.RelayPublish(defaultPubsubTopic, message)
 	require.NoError(t, err)
 	require.NotEmpty(t, msgHash)
 
@@ -135,7 +135,7 @@ func TestRelayMessageBroadcast(t *testing.T) {
 	logger.Debug("Verifying message reception for each node")
 	for i, node := range nodes {
 		logger.Debug("Verifying message for node", zap.String("node", nodeNames[i]))
-		err := node.Wrappers_VerifyMessageReceived(message, msgHash)
+		err := node.VerifyMessageReceived(message, msgHash)
 		require.NoError(t, err, "message verification failed for node: "+nodeNames[i])
 	}
 
@@ -154,23 +154,23 @@ func TestSendmsgInvalidPayload(t *testing.T) {
 	logger.Debug("Creating nodes")
 	senderNodeConfig := *utilities.DefaultWakuConfig
 	senderNodeConfig.Relay = true
-	senderNode, err := testlibs.Wrappers_StartWakuNode(&senderNodeConfig, logger.Named(nodeNames[0]))
+	senderNode, err := testlibs.StartWakuNode(&senderNodeConfig, logger.Named(nodeNames[0]))
 	require.NoError(t, err)
-	defer senderNode.Wrappers_StopAndDestroy()
+	defer senderNode.StopAndDestroy()
 
 	receiverNodeConfig := *utilities.DefaultWakuConfig
 	receiverNodeConfig.Relay = true
 
-	receiverNode, err := testlibs.Wrappers_StartWakuNode(&receiverNodeConfig, logger.Named(nodeNames[1]))
+	receiverNode, err := testlibs.StartWakuNode(&receiverNodeConfig, logger.Named(nodeNames[1]))
 	require.NoError(t, err)
-	defer receiverNode.Wrappers_StopAndDestroy()
+	defer receiverNode.StopAndDestroy()
 
 	logger.Debug("Connecting SenderNode and PeerNode1")
-	err = senderNode.Wrappers_ConnectPeer(receiverNode)
+	err = senderNode.ConnectPeer(receiverNode)
 	require.NoError(t, err)
 
 	logger.Debug("Subscribing SenderNode to the default pubsub topic")
-	err = senderNode.Wrappers_RelaySubscribe(defaultPubsubTopic)
+	err = senderNode.RelaySubscribe(defaultPubsubTopic)
 	require.NoError(t, err)
 
 	logger.Debug("SenderNode is publishing an invalid message")
@@ -179,9 +179,9 @@ func TestSendmsgInvalidPayload(t *testing.T) {
 		Version: proto.Uint32(0),
 	}
 
-	message := senderNode.Wrappers_CreateMessage(invalidMessage)
+	message := senderNode.CreateMessage(invalidMessage)
 
-	msgHash, err := senderNode.Wrappers_RelayPublish(defaultPubsubTopic, message)
+	msgHash, err := senderNode.RelayPublish(defaultPubsubTopic, message)
 
 	logger.Debug("Verifying if message was sent or failed")
 	if err != nil {

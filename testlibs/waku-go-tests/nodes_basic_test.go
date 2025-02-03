@@ -18,13 +18,13 @@ func TestBasicWakuNodes(t *testing.T) {
 	nodeCfg.Relay = true
 
 	utilities.Debug("Starting the WakuNodeWrapper")
-	node, err := testlibs.Wrappers_StartWakuNode(&nodeCfg, logger.Named("node"))
+	node, err := testlibs.StartWakuNode(&nodeCfg, logger.Named("node"))
 	require.NoError(t, err, "Failed to create the WakuNodeWrapper")
 
 	// Use defer to ensure proper cleanup
 	defer func() {
 		utilities.Debug("Stopping and destroying Node")
-		node.Wrappers_StopAndDestroy()
+		node.StopAndDestroy()
 	}()
 	utilities.Debug("Successfully created the WakuNodeWrapper")
 

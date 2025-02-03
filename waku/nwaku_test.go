@@ -962,7 +962,7 @@ func TestParallelPings(t *testing.T) {
 			return nil
 		}
 
-		return errors.New(fmt.Sprintf("dialerNode should have 3 peers but it has %d", dialerPeerCount))
+		return fmt.Errorf("dialerNode should have 3 peers but it has %d", dialerPeerCount)
 	}, options)
 	require.NoError(t, err)
 

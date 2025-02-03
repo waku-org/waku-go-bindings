@@ -874,14 +874,66 @@ func TestParallelPings(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, dialerNode.Start())
 
-	storenodes := []string{"/dns4/store-01.do-ams3.status.staging.status.im/tcp/30303/p2p/16Uiu2HAm3xVDaz6SRJ6kErwC21zBJEZjavVXg7VSkoWzaV1aMA3F",
-		"/dns4/store-01.gc-us-central1-a.status.staging.status.im/tcp/30303/p2p/16Uiu2HAmB7Ur9HQqo3cWDPovRQjo57fxWWDaQx27WxSzDGhN4JKg",
-		"/dns4/store-01.ac-cn-hongkong-c.status.staging.status.im/tcp/30303/p2p/16Uiu2HAmMU7Y29oL6DmoJfBFv8J4JhYzYgazPL7nGKJFBV3qcj2E"}
+	receiverNodeWakuConfig1 := WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   9081,
+		TcpPort:         60081,
+	}
+
+	receiverNode1, err := NewWakuNode(&receiverNodeWakuConfig1, logger.Named("receiverNode"))
+	require.NoError(t, err)
+	require.NoError(t, receiverNode1.Start())
+	receiverMultiaddr1, err := receiverNode1.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, receiverMultiaddr1)
+	require.True(t, len(receiverMultiaddr1) > 0)
+
+	receiverNodeWakuConfig2 := WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   9082,
+		TcpPort:         60082,
+	}
+
+	receiverNode2, err := NewWakuNode(&receiverNodeWakuConfig2, logger.Named("receiverNode"))
+	require.NoError(t, err)
+	require.NoError(t, receiverNode2.Start())
+	receiverMultiaddr2, err := receiverNode2.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, receiverMultiaddr2)
+	require.True(t, len(receiverMultiaddr2) > 0)
+
+	receiverNodeWakuConfig3 := WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   9083,
+		TcpPort:         60083,
+	}
+
+	receiverNode3, err := NewWakuNode(&receiverNodeWakuConfig3, logger.Named("receiverNode"))
+	require.NoError(t, err)
+	require.NoError(t, receiverNode3.Start())
+	receiverMultiaddr3, err := receiverNode3.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, receiverMultiaddr3)
+	require.True(t, len(receiverMultiaddr3) > 0)
+
+	receiverNodes := []string{receiverMultiaddr1[0].String(), receiverMultiaddr2[0].String(), receiverMultiaddr3[0].String()}
 
 	// node.PingPeer(ctx, peerInfo)
-	for _, storenode := range storenodes {
+	for _, receiverNode := range receiverNodes {
 
-		addrInfo, err := peer.AddrInfoFromString(storenode)
+		addrInfo, err := peer.AddrInfoFromString(receiverNode)
 		require.NoError(t, err)
 
 		go func(peerInfo peer.AddrInfo) {
@@ -895,6 +947,24 @@ func TestParallelPings(t *testing.T) {
 		}(*addrInfo)
 
 	}
+
+	options := func(b *backoff.ExponentialBackOff) {
+		b.MaxElapsedTime = 30 * time.Second
+	}
+	err = RetryWithBackOff(func() error {
+		dialerPeerCount, err := dialerNode.GetNumConnectedPeers()
+
+		if err != nil {
+			return err
+		}
+
+		if dialerPeerCount == 3 {
+			return nil
+		}
+
+		return errors.New(fmt.Sprintf("dialerNode should have 3 peers but it has %d", dialerPeerCount))
+	}, options)
+	require.NoError(t, err)
 
 	// Stop nodes
 	require.NoError(t, dialerNode.Stop())

@@ -596,7 +596,9 @@ func (n *WakuNode) GetNumConnectedRelayPeers(optPubsubTopic ...string) (int, err
 	var cPubsubTopic = C.CString(pubsubTopic)
 	defer C.free(unsafe.Pointer(cPubsubTopic))
 
+	wg.Add(1)
 	C.cGoWakuGetNumConnectedRelayPeers(n.wakuCtx, cPubsubTopic, resp)
+	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
 		numPeersStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))

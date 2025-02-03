@@ -859,6 +859,9 @@ func TestParallelPings(t *testing.T) {
 	logger, err := zap.NewDevelopment()
 	require.NoError(t, err)
 
+	tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0, logger)
+	require.NoError(t, err)
+
 	// start node that will initiate the dial
 	dialerNodeWakuConfig := WakuConfig{
 		Relay:           true,
@@ -866,13 +869,16 @@ func TestParallelPings(t *testing.T) {
 		Discv5Discovery: false,
 		ClusterID:       16,
 		Shards:          []uint16{64},
-		Discv5UdpPort:   9080,
-		TcpPort:         60080,
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
 	}
 
 	dialerNode, err := NewWakuNode(&dialerNodeWakuConfig, logger.Named("dialerNode"))
 	require.NoError(t, err)
 	require.NoError(t, dialerNode.Start())
+
+	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0, logger)
+	require.NoError(t, err)
 
 	receiverNodeWakuConfig1 := WakuConfig{
 		Relay:           true,
@@ -880,8 +886,8 @@ func TestParallelPings(t *testing.T) {
 		Discv5Discovery: false,
 		ClusterID:       16,
 		Shards:          []uint16{64},
-		Discv5UdpPort:   9081,
-		TcpPort:         60081,
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
 	}
 
 	receiverNode1, err := NewWakuNode(&receiverNodeWakuConfig1, logger.Named("receiverNode"))
@@ -892,14 +898,17 @@ func TestParallelPings(t *testing.T) {
 	require.NotNil(t, receiverMultiaddr1)
 	require.True(t, len(receiverMultiaddr1) > 0)
 
+	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0, logger)
+	require.NoError(t, err)
+
 	receiverNodeWakuConfig2 := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
 		ClusterID:       16,
 		Shards:          []uint16{64},
-		Discv5UdpPort:   9082,
-		TcpPort:         60082,
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
 	}
 
 	receiverNode2, err := NewWakuNode(&receiverNodeWakuConfig2, logger.Named("receiverNode"))
@@ -910,14 +919,17 @@ func TestParallelPings(t *testing.T) {
 	require.NotNil(t, receiverMultiaddr2)
 	require.True(t, len(receiverMultiaddr2) > 0)
 
+	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0, logger)
+	require.NoError(t, err)
+
 	receiverNodeWakuConfig3 := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
 		ClusterID:       16,
 		Shards:          []uint16{64},
-		Discv5UdpPort:   9083,
-		TcpPort:         60083,
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
 	}
 
 	receiverNode3, err := NewWakuNode(&receiverNodeWakuConfig3, logger.Named("receiverNode"))

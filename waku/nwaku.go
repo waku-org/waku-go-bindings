@@ -317,6 +317,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -1254,4 +1255,52 @@ func getContextTimeoutMilliseconds(ctx context.Context) int {
 
 func FormatWakuRelayTopic(clusterId uint16, shard uint16) string {
 	return fmt.Sprintf("/waku/2/rs/%d/%d", clusterId, shard)
+}
+
+func GetFreePortIfNeeded(tcpPort int, discV5UDPPort int, logger *zap.Logger) (int, int, error) {
+	if tcpPort == 0 {
+		for i := 0; i < 10; i++ {
+			tcpAddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort("localhost", "0"))
+			if err != nil {
+				logger.Warn("unable to resolve tcp addr: %v", zap.Error(err))
+				continue
+			}
+			tcpListener, err := net.ListenTCP("tcp", tcpAddr)
+			if err != nil {
+				logger.Warn("unable to listen on addr", zap.Stringer("addr", tcpAddr), zap.Error(err))
+				continue
+			}
+			tcpPort = tcpListener.Addr().(*net.TCPAddr).Port
+			tcpListener.Close()
+			break
+		}
+		if tcpPort == 0 {
+			return -1, -1, errors.New("could not obtain a free TCP port")
+		}
+	}
+
+	if discV5UDPPort == 0 {
+		for i := 0; i < 10; i++ {
+			udpAddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort("localhost", "0"))
+			if err != nil {
+				logger.Warn("unable to resolve udp addr: %v", zap.Error(err))
+				continue
+			}
+
+			udpListener, err := net.ListenUDP("udp", udpAddr)
+			if err != nil {
+				logger.Warn("unable to listen on addr", zap.Stringer("addr", udpAddr), zap.Error(err))
+				continue
+			}
+
+			discV5UDPPort = udpListener.LocalAddr().(*net.UDPAddr).Port
+			udpListener.Close()
+			break
+		}
+		if discV5UDPPort == 0 {
+			return -1, -1, errors.New("could not obtain a free UDP port")
+		}
+	}
+
+	return tcpPort, discV5UDPPort, nil
 }

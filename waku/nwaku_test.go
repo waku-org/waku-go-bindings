@@ -954,7 +954,7 @@ func TestParallelPings(t *testing.T) {
 
 			_, err := dialerNode.PingPeer(ctx, peerInfo)
 			if err != nil { // pinging storenodes might fail, but we don't care
-				fmt.Println("------ failed pinging node: ", err)
+				logger.Warn("failed pinging node", zap.Stringer("peerId", addrInfo.ID), zap.Error(err))
 			}
 		}(*addrInfo)
 

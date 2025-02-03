@@ -890,7 +890,7 @@ func TestParallelPings(t *testing.T) {
 		TcpPort:         tcpPort,
 	}
 
-	receiverNode1, err := NewWakuNode(&receiverNodeWakuConfig1, logger.Named("receiverNode"))
+	receiverNode1, err := NewWakuNode(&receiverNodeWakuConfig1, logger.Named("receiverNode1"))
 	require.NoError(t, err)
 	require.NoError(t, receiverNode1.Start())
 	receiverMultiaddr1, err := receiverNode1.ListenAddresses()
@@ -911,7 +911,7 @@ func TestParallelPings(t *testing.T) {
 		TcpPort:         tcpPort,
 	}
 
-	receiverNode2, err := NewWakuNode(&receiverNodeWakuConfig2, logger.Named("receiverNode"))
+	receiverNode2, err := NewWakuNode(&receiverNodeWakuConfig2, logger.Named("receiverNode2"))
 	require.NoError(t, err)
 	require.NoError(t, receiverNode2.Start())
 	receiverMultiaddr2, err := receiverNode2.ListenAddresses()
@@ -932,7 +932,7 @@ func TestParallelPings(t *testing.T) {
 		TcpPort:         tcpPort,
 	}
 
-	receiverNode3, err := NewWakuNode(&receiverNodeWakuConfig3, logger.Named("receiverNode"))
+	receiverNode3, err := NewWakuNode(&receiverNodeWakuConfig3, logger.Named("receiverNode3"))
 	require.NoError(t, err)
 	require.NoError(t, receiverNode3.Start())
 	receiverMultiaddr3, err := receiverNode3.ListenAddresses()

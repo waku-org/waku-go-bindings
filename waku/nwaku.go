@@ -344,7 +344,7 @@ const ConnectionChangeChanBufferSize = 100
 type WakuConfig struct {
 	Host                        string           `json:"host,omitempty"`
 	Nodekey                     string           `json:"nodekey,omitempty"`
-	Relay                       bool             `json:"relay,omitempty"`
+	Relay                       bool             `json:"relay"`
 	Store                       bool             `json:"store,omitempty"`
 	LegacyStore                 bool             `json:"legacyStore"`
 	Storenode                   string           `json:"storenode,omitempty"`

@@ -1,12 +1,13 @@
 package utilities
 
 import (
+	"errors"
 	"math/rand"
 	"sync"
 	"time"
-    "errors"
-	"go.uber.org/zap"
+
 	"github.com/waku-org/waku-go-bindings/waku"
+	"go.uber.org/zap"
 )
 
 var (
@@ -27,12 +28,12 @@ var DefaultWakuConfig = &waku.WakuConfig{
 	Store:           false,
 	Filter:          false,
 	Lightpush:       false,
+	Discv5UdpPort:   GenerateUniquePort(),
+	TcpPort:         GenerateUniquePort(),
 }
 
 // WakuConfigOption is a function that applies a change to a WakuConfig.
 type WakuConfigOption func(*waku.WakuConfig)
-
-
 
 func GenerateUniquePort() int {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano())) // Local RNG instance
@@ -49,7 +50,6 @@ func GenerateUniquePort() int {
 		portsMutex.Unlock()
 	}
 }
-
 
 func CheckWakuNodeNull(logger *zap.Logger, node interface{}) error {
 	if node == nil {

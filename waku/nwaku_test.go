@@ -854,3 +854,130 @@ func TestStore(t *testing.T) {
 	require.NoError(t, senderNode.Stop())
 	require.NoError(t, receiverNode.Stop())
 }
+
+func TestParallelPings(t *testing.T) {
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+
+	tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0, logger)
+	require.NoError(t, err)
+
+	// start node that will initiate the dial
+	dialerNodeWakuConfig := WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+
+	dialerNode, err := NewWakuNode(&dialerNodeWakuConfig, logger.Named("dialerNode"))
+	require.NoError(t, err)
+	require.NoError(t, dialerNode.Start())
+
+	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0, logger)
+	require.NoError(t, err)
+
+	receiverNodeWakuConfig1 := WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+
+	receiverNode1, err := NewWakuNode(&receiverNodeWakuConfig1, logger.Named("receiverNode1"))
+	require.NoError(t, err)
+	require.NoError(t, receiverNode1.Start())
+	receiverMultiaddr1, err := receiverNode1.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, receiverMultiaddr1)
+	require.True(t, len(receiverMultiaddr1) > 0)
+
+	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0, logger)
+	require.NoError(t, err)
+
+	receiverNodeWakuConfig2 := WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+
+	receiverNode2, err := NewWakuNode(&receiverNodeWakuConfig2, logger.Named("receiverNode2"))
+	require.NoError(t, err)
+	require.NoError(t, receiverNode2.Start())
+	receiverMultiaddr2, err := receiverNode2.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, receiverMultiaddr2)
+	require.True(t, len(receiverMultiaddr2) > 0)
+
+	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0, logger)
+	require.NoError(t, err)
+
+	receiverNodeWakuConfig3 := WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+
+	receiverNode3, err := NewWakuNode(&receiverNodeWakuConfig3, logger.Named("receiverNode3"))
+	require.NoError(t, err)
+	require.NoError(t, receiverNode3.Start())
+	receiverMultiaddr3, err := receiverNode3.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, receiverMultiaddr3)
+	require.True(t, len(receiverMultiaddr3) > 0)
+
+	receiverNodes := []string{receiverMultiaddr1[0].String(), receiverMultiaddr2[0].String(), receiverMultiaddr3[0].String()}
+
+	// node.PingPeer(ctx, peerInfo)
+	for _, receiverNode := range receiverNodes {
+
+		addrInfo, err := peer.AddrInfoFromString(receiverNode)
+		require.NoError(t, err)
+
+		go func(peerInfo peer.AddrInfo) {
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			defer cancel()
+
+			_, err := dialerNode.PingPeer(ctx, peerInfo)
+			if err != nil { // pinging storenodes might fail, but we don't care
+				logger.Warn("failed pinging node", zap.Stringer("peerId", addrInfo.ID), zap.Error(err))
+			}
+		}(*addrInfo)
+
+	}
+
+	options := func(b *backoff.ExponentialBackOff) {
+		b.MaxElapsedTime = 30 * time.Second
+	}
+	err = RetryWithBackOff(func() error {
+		dialerPeerCount, err := dialerNode.GetNumConnectedPeers()
+
+		if err != nil {
+			return err
+		}
+
+		if dialerPeerCount == 3 {
+			return nil
+		}
+
+		return fmt.Errorf("dialerNode should have 3 peers but it has %d", dialerPeerCount)
+	}, options)
+	require.NoError(t, err)
+
+	// Stop nodes
+	require.NoError(t, dialerNode.Stop())
+}

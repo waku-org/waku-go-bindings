@@ -410,7 +410,7 @@ func (wrapper *WakuNodeWrapper) VerifyMessageReceived(expectedMessage *pb.WakuMe
 			logger.Debug("Message hash does not match")
 			return errors.New("message hash does not match")
 		}
-		logger.Debug("Message received and verified successfully")
+		logger.Debug("Message received and verified successfully", zap.String("Message: ", string(envelope.Message().Payload)))
 		return nil
 	case <-time.After(5 * time.Second):
 		logger.Debug("Timeout: message not received within 5 seconds")

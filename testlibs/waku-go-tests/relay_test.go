@@ -194,3 +194,49 @@ func TestSendmsgInvalidPayload(t *testing.T) {
 
 	logger.Debug("TestInvalidMessageFormat completed")
 }
+
+func TestMessageNotReceivedWithoutRelay(t *testing.T) {
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+	logger.Debug("Starting TestMessageNotReceivedWithoutRelay")
+
+	logger.Debug("Creating Sender Node with Relay disabled")
+	senderConfig := *utilities.DefaultWakuConfig
+	senderConfig.Relay = false
+	senderNode, err := testlibs.StartWakuNode(&senderConfig, logger.Named("SenderNode"))
+	require.NoError(t, err)
+	defer senderNode.StopAndDestroy()
+
+	logger.Debug("Creating Receiver Node with Relay disabled")
+	receiverConfig := *utilities.DefaultWakuConfig
+	receiverConfig.Relay = false
+	receiverNode, err := testlibs.StartWakuNode(&receiverConfig, logger.Named("ReceiverNode"))
+	require.NoError(t, err)
+	defer receiverNode.StopAndDestroy()
+
+	logger.Debug("Connecting Sender and Receiver")
+	err = senderNode.ConnectPeer(receiverNode)
+	require.NoError(t, err)
+
+	logger.Debug("Subscribing Receiver to the default pubsub topic")
+	defaultPubsubTopic := utilities.DefaultPubsubTopic
+	err = receiverNode.RelaySubscribe(defaultPubsubTopic)
+	require.NoError(t, err)
+
+	logger.Debug("SenderNode is publishing a message")
+	message := senderNode.CreateMessage()
+	msgHash, err := senderNode.RelayPublish(defaultPubsubTopic, message)
+	require.NoError(t, err)
+	require.NotEmpty(t, msgHash)
+
+	logger.Debug("Waiting to ensure message delivery")
+	time.Sleep(3 * time.Second)
+
+	logger.Debug("Verifying that Receiver did NOT receive the message")
+	err = receiverNode.VerifyMessageReceived(message, msgHash)
+	if err == nil {
+		t.Fatalf("Test failed: ReceiverNode SHOULD NOT have received the message")
+	}
+
+	logger.Debug("TestMessageNotReceivedWithoutRelay completed successfully")
+}

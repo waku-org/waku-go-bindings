@@ -21,13 +21,13 @@ type NwakuInfo struct {
 	EnrUri          string   `json:"enrUri"`
 }
 
-func logrusToZap(log *logrus.Logger) *zap.Logger {
+func logrusToZap(log *logrus.Logger, nodeName string) *zap.Logger {
 	config := zap.NewDevelopmentConfig()
 	config.EncoderConfig.TimeKey = "" // Remove timestamp duplication
 	config.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 
 	zapLogger, _ := config.Build()
-	return zapLogger
+	return zapLogger.Named(nodeName)
 }
 
 func GenerateUniquePort() int {

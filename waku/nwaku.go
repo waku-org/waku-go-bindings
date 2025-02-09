@@ -1306,3 +1306,37 @@ func GetFreePortIfNeeded(tcpPort int, discV5UDPPort int, logger *zap.Logger) (in
 
 	return tcpPort, discV5UDPPort, nil
 }
+
+func StartWakuNode(customCfg *WakuConfig) (*WakuNode, error) {
+	logrusLogger := GetLogger()
+	logger := logrusToZap(logrusLogger)
+
+	logger.Debug("Initializing Waku node")
+
+	var nodeCfg WakuConfig
+	if customCfg == nil {
+		nodeCfg = DefaultWakuConfig // Use the default configuration
+	} else {
+		nodeCfg = *customCfg
+	}
+
+	// Assign dynamically generated ports
+	nodeCfg.Discv5UdpPort = GenerateUniquePort()
+	nodeCfg.TcpPort = GenerateUniquePort()
+
+	logger.Debug("Creating Waku node")
+	node, err := NewWakuNode(&nodeCfg, logger)
+	if err != nil {
+		logger.Error("Failed to create Waku node", zap.Error(err))
+		return nil, err
+	}
+
+	logger.Debug("Starting Waku node")
+	if err := node.Start(); err != nil {
+		logger.Error("Failed to start Waku node", zap.Error(err))
+		return nil, err
+	}
+
+	logger.Debug("Successfully started Waku node")
+	return node, nil
+}

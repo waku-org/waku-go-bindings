@@ -7,43 +7,14 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-
 	"time"
 
 	"github.com/cenkalti/backoff/v3"
-	"github.com/sirupsen/logrus"
-	"go.uber.org/zap"
-	"golang.org/x/exp/rand"
 )
 
 type NwakuInfo struct {
 	ListenAddresses []string `json:"listenAddresses"`
 	EnrUri          string   `json:"enrUri"`
-}
-
-func logrusToZap(log *logrus.Logger, nodeName string) *zap.Logger {
-	config := zap.NewDevelopmentConfig()
-	config.EncoderConfig.TimeKey = "" // Remove timestamp duplication
-	config.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
-
-	zapLogger, _ := config.Build()
-	return zapLogger.Named(nodeName)
-}
-
-func GenerateUniquePort() int {
-	rng := rand.New(rand.NewSource(uint64(time.Now().UnixNano()))) // Local RNG instance
-
-	for {
-		port := rng.Intn(MaxPort-MinPort+1) + MinPort
-
-		portsMutex.Lock()
-		if !usedPorts[port] {
-			usedPorts[port] = true
-			portsMutex.Unlock()
-			return port
-		}
-		portsMutex.Unlock()
-	}
 }
 
 func GetNwakuInfo(host *string, port *int) (NwakuInfo, error) {

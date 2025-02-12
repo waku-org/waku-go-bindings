@@ -337,9 +337,9 @@ import (
 )
 
 const requestTimeout = 30 * time.Second
-const MsgChanBufferSize = 100
-const TopicHealthChanBufferSize = 100
-const ConnectionChangeChanBufferSize = 100
+const MsgChanBufferSize = 1024
+const TopicHealthChanBufferSize = 1024
+const ConnectionChangeChanBufferSize = 1024
 
 type WakuConfig struct {
 	Host                        string           `json:"host,omitempty"`

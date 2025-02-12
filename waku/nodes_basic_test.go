@@ -35,34 +35,35 @@ func TestNodeRestart(t *testing.T) {
 	Debug("Creating Node")
 	nodeConfig := DefaultWakuConfig
 	node, err := StartWakuNode("TestNode", &nodeConfig)
-	require.NoError(t, err)
+	require.NoError(t, err, "Failed to start Waku node")
+	defer node.StopAndDestroy()
+
 	Debug("Node started successfully")
 
 	Debug("Fetching ENR before stopping the node")
-	enrBefore := node.GetENR()
-	require.NotEmpty(t, enrBefore)
+	enrBefore, err := node.ENR()
+	require.NoError(t, err, "Failed to get ENR before stopping")
+	require.NotEmpty(t, enrBefore, "ENR should not be empty before stopping")
 	Debug("ENR before stopping: %s", enrBefore)
 
 	Debug("Stopping the Node")
 	err = node.Stop()
-	require.NoError(t, err)
+	require.NoError(t, err, "Failed to stop Waku node")
 	Debug("Node stopped successfully")
 
 	Debug("Restarting the Node")
 	err = node.Start()
-	require.NoError(t, err)
+	require.NoError(t, err, "Failed to restart Waku node")
 	Debug("Node restarted successfully")
 
 	Debug("Fetching ENR after restarting the node")
-	enrAfter := node.GetENR()
-	require.NotEmpty(t, enrAfter)
+	enrAfter, err := node.ENR()
+	require.NoError(t, err, "Failed to get ENR after restarting")
+	require.NotEmpty(t, enrAfter, "ENR should not be empty after restart")
 	Debug("ENR after restarting: %s", enrAfter)
 
 	Debug("Comparing ENRs before and after restart")
 	require.Equal(t, enrBefore, enrAfter, "ENR should remain the same after node restart")
-
-	Debug("Cleaning up: stopping and destroying the node")
-	defer node.StopAndDestroy()
 
 	Debug("TestNodeRestart completed successfully")
 }

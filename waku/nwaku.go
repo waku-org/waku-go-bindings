@@ -689,34 +689,44 @@ func (n *WakuNode) RelaySubscribe(pubsubTopic string) error {
 		return err
 	}
 
-	wg := sync.WaitGroup{}
+	timeout := 3 * time.Second
+	Debug("Attempting to subscribe to relay on node %s, pubsubTopic: %s, timeout: %v", n.nodeName, pubsubTopic, timeout)
 
-	var resp = C.allocResp(unsafe.Pointer(&wg))
-	var cPubsubTopic = C.CString(pubsubTopic)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
+	var resp = C.allocResp(nil)
 	defer C.freeResp(resp)
+
+	var cPubsubTopic = C.CString(pubsubTopic)
 	defer C.free(unsafe.Pointer(cPubsubTopic))
 
 	if n.wakuCtx == nil {
 		err := errors.New("wakuCtx is nil")
 		Error("Failed to subscribe to relay on node %s: %v", n.nodeName, err)
-		return errors.New("wakuCtx is nil")
+		return err
 	}
 
-	wg.Add(1)
-	Debug("Attempting to subscribe to relay on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
-	C.cGoWakuRelaySubscribe(n.wakuCtx, cPubsubTopic, resp)
-	wg.Wait()
+	done := make(chan struct{})
+	go func() {
+		C.cGoWakuRelaySubscribe(n.wakuCtx, cPubsubTopic, resp)
+		close(done)
+	}()
 
-	if C.getRet(resp) == C.RET_OK {
-
-		Debug("Successfully subscribed to relay on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
-		return nil
+	select {
+	case <-ctx.Done():
+		Error("RelaySubscribe timed out on node %s", n.nodeName)
+		return errors.New("relay subscribe operation timed out")
+	case <-done:
+		if C.getRet(resp) == C.RET_OK {
+			Debug("Successfully subscribed to relay on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
+			return nil
+		}
 	}
 
-	errMsg := "error WakuRelaySubscribe: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	errMsg := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
 	Error("Failed to subscribe to relay on node %s, pubsubTopic: %s, error: %v", n.nodeName, pubsubTopic, errMsg)
-	return errors.New(errMsg)
+	return errors.New("error WakuRelaySubscribe: " + errMsg)
 }
 
 func (n *WakuNode) RelayAddProtectedShard(clusterId uint16, shardId uint16, pubkey *ecdsa.PublicKey) error {
@@ -1512,7 +1522,16 @@ func (n *WakuNode) DisconnectPeer(target *WakuNode) error {
 }
 
 func ConnectAllPeers(nodes []*WakuNode) error {
-	Debug("Connecting nodes in a relay chain")
+	if len(nodes) == 0 {
+		Error("Cannot connect peers: node list is empty")
+		return errors.New("node list is empty")
+	}
+
+	timeout := time.Duration(len(nodes)*2) * time.Second
+	Debug("Connecting nodes in a relay chain with timeout: %v", timeout)
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
 	for i := 0; i < len(nodes)-1; i++ {
 		Debug("Connecting node %d to node %d", i, i+1)
@@ -1523,14 +1542,17 @@ func ConnectAllPeers(nodes []*WakuNode) error {
 		}
 	}
 
-	time.Sleep(4 * time.Second)
-	Debug("Waiting for connections to stabilize")
-
+	<-ctx.Done()
+	Debug("Connections stabilized")
 	return nil
 }
 
 func (n *WakuNode) VerifyMessageReceived(expectedMessage *pb.WakuMessage, expectedHash common.MessageHash) error {
-	Debug("Verifying if the message was received on node %s", n.nodeName)
+	timeout := 3 * time.Second
+	Debug("Verifying if the message was received on node %s, timeout: %v", n.nodeName, timeout)
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
 	select {
 	case envelope := <-n.MsgChan:
@@ -1552,9 +1574,9 @@ func (n *WakuNode) VerifyMessageReceived(expectedMessage *pb.WakuMessage, expect
 		}
 		Debug("Message received and verified successfully on node %s, Message: %s", n.nodeName, string(envelope.Message().Payload))
 		return nil
-	case <-time.After(5 * time.Second):
-		Error("Timeout: message not received within 5 seconds on node %s", n.nodeName)
-		return errors.New("timeout: message not received within 5 seconds")
+	case <-ctx.Done():
+		Error("Timeout: message not received within %v on node %s", timeout, n.nodeName)
+		return errors.New("timeout: message not received within the given duration")
 	}
 }
 

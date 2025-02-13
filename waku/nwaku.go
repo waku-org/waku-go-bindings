@@ -1422,7 +1422,15 @@ func StartWakuNode(nodeName string, customCfg *WakuConfig) (*WakuNode, error) {
 
 	var nodeCfg WakuConfig
 	if customCfg == nil {
+		tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0)
+		if err != nil {
+			Error("Failed to allocate unique ports: %v", err)
+			tcpPort, udpPort = 0, 0 // Fallback to OS-assigned ports
+		}
+
 		nodeCfg = DefaultWakuConfig
+		nodeCfg.TcpPort = tcpPort
+		nodeCfg.Discv5UdpPort = udpPort
 	} else {
 		nodeCfg = *customCfg
 	}

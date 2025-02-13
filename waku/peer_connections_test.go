@@ -41,7 +41,6 @@ func TestDisconnectPeerNodes(t *testing.T) {
 	connectedPeers, err = nodeA.GetConnectedPeers()
 	require.NoError(t, err, "Failed to get connected peers for Node A after disconnection")
 	require.False(t, slices.Contains(connectedPeers, nodeBPeerID), "Node B should no longer be a peer of Node A after disconnection")
-
 	Debug("Test completed successfully: Node B was disconnected from Node A")
 }
 

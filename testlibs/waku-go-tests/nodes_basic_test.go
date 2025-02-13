@@ -46,9 +46,9 @@ func TestNodeRestart(t *testing.T) {
 	logger.Debug("Node started successfully")
 
 	logger.Debug("Fetching ENR before stopping the node")
-	enrBefore := node.GetENR()
+	enrBefore, _ := node.ENR()
 	require.NotEmpty(t, enrBefore)
-	logger.Debug("ENR before stopping", zap.String("ENR", enrBefore))
+	//logger.Debug("ENR before stopping", zap.String("ENR", enrBefore))
 
 	logger.Debug("Stopping the Node")
 	err = node.Stop()
@@ -61,9 +61,9 @@ func TestNodeRestart(t *testing.T) {
 	logger.Debug("Node restarted successfully")
 
 	logger.Debug("Fetching ENR after restarting the node")
-	enrAfter := node.GetENR()
+	enrAfter, _ := node.ENR()
 	require.NotEmpty(t, enrAfter)
-	logger.Debug("ENR after restarting", zap.String("ENR", enrAfter))
+	//logger.Debug("ENR after restarting", zap.String("ENR", enrAfter))
 
 	logger.Debug("Comparing ENRs before and after restart")
 	require.Equal(t, enrBefore, enrAfter, "ENR should remain the same after node restart")

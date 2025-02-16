@@ -657,7 +657,7 @@ func (n *WakuNode) GetConnectedPeers() (peer.IDSlice, error) {
 	if C.getRet(resp) == C.RET_OK {
 		peersStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
 		if peersStr == "" {
-			Debug("No connected peers found for " + n.nodeName)
+			Debug("No connected peers found for %s", n.nodeName)
 			return nil, nil
 		}
 
@@ -689,39 +689,32 @@ func (n *WakuNode) RelaySubscribe(pubsubTopic string) error {
 		return err
 	}
 
-	timeout := 3 * time.Second
-	Debug("Attempting to subscribe to relay on node %s, pubsubTopic: %s, timeout: %v", n.nodeName, pubsubTopic, timeout)
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	var resp = C.allocResp(nil)
-	defer C.freeResp(resp)
-
-	var cPubsubTopic = C.CString(pubsubTopic)
-	defer C.free(unsafe.Pointer(cPubsubTopic))
-
 	if n.wakuCtx == nil {
 		err := errors.New("wakuCtx is nil")
 		Error("Failed to subscribe to relay on node %s: %v", n.nodeName, err)
 		return err
 	}
 
-	done := make(chan struct{})
-	go func() {
-		C.cGoWakuRelaySubscribe(n.wakuCtx, cPubsubTopic, resp)
-		close(done)
-	}()
+	Debug("Attempting to subscribe to relay on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
 
-	select {
-	case <-ctx.Done():
-		Error("RelaySubscribe timed out on node %s", n.nodeName)
-		return errors.New("relay subscribe operation timed out")
-	case <-done:
-		if C.getRet(resp) == C.RET_OK {
-			Debug("Successfully subscribed to relay on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
-			return nil
-		}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	var resp = C.allocResp(unsafe.Pointer(&wg))
+	var cPubsubTopic = C.CString(pubsubTopic)
+
+	defer C.freeResp(resp)
+	defer C.free(unsafe.Pointer(cPubsubTopic))
+
+	Debug("Calling cGoWakuRelaySubscribe on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
+	C.cGoWakuRelaySubscribe(n.wakuCtx, cPubsubTopic, resp)
+
+	Debug("Waiting for response from cGoWakuRelaySubscribe on node %s", n.nodeName)
+	wg.Wait() // Ensures the function completes before proceeding
+
+	if C.getRet(resp) == C.RET_OK {
+		Debug("Successfully subscribed to relay on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
+		return nil
 	}
 
 	errMsg := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
@@ -1099,7 +1092,7 @@ func (n *WakuNode) Destroy() error {
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
-		Debug("Successfully destroyed " + n.nodeName)
+		Debug("Successfully destroyed %s", n.nodeName)
 		return nil
 	}
 
@@ -1608,4 +1601,45 @@ func (n *WakuNode) CreateMessage(customMessage ...*pb.WakuMessage) *pb.WakuMessa
 
 	Debug("Successfully created a default WakuMessage on node %s", n.nodeName)
 	return defaultMessage
+}
+
+func WaitForAutoConnection(nodeList []*WakuNode) error {
+	Debug("Waiting for auto-connection of nodes...")
+
+	var hardWait = 30 * time.Second
+	Debug("Applying hard wait of %v seconds before checking connections", hardWait.Seconds())
+	time.Sleep(hardWait)
+
+	for _, node := range nodeList {
+		peers, err := node.GetConnectedPeers()
+		if err != nil {
+			Error("Failed to get connected peers for node %s: %v", node.nodeName, err)
+			return err
+		}
+
+		if len(peers) < 1 {
+			Error("Node %s has no connected peers, expected at least 1", node.nodeName)
+			return errors.New("expected at least one connected peer")
+		}
+
+		Debug("Node %s has %d connected peers", node.nodeName, len(peers))
+	}
+
+	Debug("Auto-connection check completed successfully")
+	return nil
+}
+
+func SubscribeNodesToTopic(nodes []*WakuNode, topic string) error {
+	for _, node := range nodes {
+		Debug("Subscribing node %s to topic %s", node.nodeName, topic)
+		err := RetryWithBackOff(func() error {
+			return node.RelaySubscribe(topic)
+		})
+		if err != nil {
+			Error("Failed to subscribe node %s to topic %s: %v", node.nodeName, topic, err)
+			return err
+		}
+		Debug("Node %s successfully subscribed to topic %s", node.nodeName, topic)
+	}
+	return nil
 }

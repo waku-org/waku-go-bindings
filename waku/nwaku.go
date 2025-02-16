@@ -1422,6 +1422,7 @@ func StartWakuNode(nodeName string, customCfg *WakuConfig) (*WakuNode, error) {
 
 	var nodeCfg WakuConfig
 	if customCfg == nil {
+		nodeCfg = DefaultWakuConfig
 
 	} else {
 		nodeCfg = *customCfg
@@ -1433,7 +1434,6 @@ func StartWakuNode(nodeName string, customCfg *WakuConfig) (*WakuNode, error) {
 		tcpPort, udpPort = 0, 0 // Fallback to OS-assigned ports
 	}
 
-	nodeCfg = DefaultWakuConfig
 	nodeCfg.TcpPort = tcpPort
 	nodeCfg.Discv5UdpPort = udpPort
 

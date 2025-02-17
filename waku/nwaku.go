@@ -61,7 +61,6 @@ package waku
 		int ret = call;                                                            \
 		if (ret != 0) {                                                            \
 			printf("Failed the call to: %s. Returned code: %d\n", #call, ret);     \
-			exit(1);                                                               \
 		}                                                                          \
 	} while (0)
 

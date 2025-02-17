@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestRelaySubscribeToDefaultTopic(t *testing.T) {
+func TestNumRelayPeers(t *testing.T) {
 	Debug("Starting test to verify relay subscription with multiple nodes via Discv5")
 
 	// Configure Node1
@@ -345,7 +345,8 @@ func TestRelaySubscribeAndPeerCountChange(t *testing.T) {
 	node2, err := StartWakuNode("Node2", &node2Config)
 	require.NoError(t, err, "Failed to start Node2")
 
-	//enrNode2, err := node2.ENR()
+	//enrNode2, err := node2.ENR() // commented till confirm from Gabriel
+	//if num peers shall be affected by it or not
 	//require.NoError(t, err, "Failed to get ENR for Node2")
 
 	node3Config := DefaultWakuConfig
@@ -462,7 +463,7 @@ func TestDiscv5PeerMeshCount(t *testing.T) {
 	require.NoError(t, err, "Failed to get number of peers in mesh for Node1 before stopping Node3")
 
 	Debug("Total number of peers in mesh for Node1 before stopping Node3: %d", peerCountBefore)
-	require.Equal(t, 2, peerCountBefore, "Expected Node1 to have exactly 3 peers in the mesh before stopping Node3")
+	require.Equal(t, 2, peerCountBefore, "Expected Node1 to have exactly 2 peers in the mesh before stopping Node3")
 
 	Debug("Stopping Node3")
 	node3.StopAndDestroy()
@@ -475,7 +476,7 @@ func TestDiscv5PeerMeshCount(t *testing.T) {
 	require.NoError(t, err, "Failed to get number of peers in mesh for Node1 after stopping Node3")
 
 	Debug("Total number of peers in mesh for Node1 after stopping Node3: %d", peerCountAfter)
-	require.Equal(t, 1, peerCountAfter, "Expected Node1 to have exactly 2 peers in the mesh after stopping Node3")
+	require.Equal(t, 1, peerCountAfter, "Expected Node1 to have exactly 1 peer in the mesh after stopping Node3")
 
 	Debug("Test successfully verified peer count change after stopping Node3")
 }
@@ -535,12 +536,171 @@ func TestDiscv5GetPeersConnected(t *testing.T) {
 	err = WaitForAutoConnection([]*WakuNode{node1, node2, node3, node4})
 	require.NoError(t, err, "Nodes did not auto-connect within timeout")
 
-	Debug("Fetching number of peers in mesh for Node1")
+	Debug("Fetching number of peers in connected to  Node1")
 	peerCount, err := node1.GetNumConnectedPeers()
 	require.NoError(t, err, "Failed to get number of peers in mesh for Node1")
 
-	Debug("Total number of peers in mesh for Node1: %d", peerCount)
+	Debug("Total number of peers connected to Node1: %d", peerCount)
 	require.Equal(t, 3, peerCount, "Expected Node1 to have exactly 3 peers in the mesh")
 
 	Debug("Test successfully verified peer count in mesh with 4 nodes using Discv5 (Chained Connection)")
+}
+
+func TestRelaySubscribeFailsWhenRelayDisabled(t *testing.T) {
+	Debug("Starting test to verify that subscribing to a topic fails when Relay is disabled")
+
+	nodeConfig := DefaultWakuConfig
+	nodeConfig.Relay = false
+
+	Debug("Creating Node with Relay disabled")
+	node, err := StartWakuNode("TestNode", &nodeConfig)
+	require.NoError(t, err, "Failed to start Node")
+
+	defer func() {
+		Debug("Stopping and destroying the Waku node")
+		node.StopAndDestroy()
+	}()
+
+	defaultPubsubTopic := DefaultPubsubTopic
+	Debug("Attempting to subscribe to the default pubsub topic: %s", defaultPubsubTopic)
+
+	err = node.RelaySubscribe(defaultPubsubTopic)
+
+	Debug("Verifying that subscription failed")
+	require.Error(t, err, "Expected RelaySubscribe to return an error when Relay is disabled")
+
+	Debug("Test successfully verified that RelaySubscribe fails when Relay is disabled")
+}
+
+func TestRelayDisabledNodeDoesNotReceiveMessages(t *testing.T) {
+	Debug("Starting test to verify that a node with Relay disabled does not receive messages")
+
+	node1Config := DefaultWakuConfig
+	node1Config.Relay = true
+
+	Debug("Creating Node1 with Relay enabled")
+	node1, err := StartWakuNode("Node1", &node1Config)
+	require.NoError(t, err, "Failed to start Node1")
+
+	enrNode1, err := node1.ENR()
+	require.NoError(t, err, "Failed to get ENR for Node1")
+
+	node2Config := DefaultWakuConfig
+	node2Config.Relay = true
+	node2Config.Discv5BootstrapNodes = []string{enrNode1.String()}
+
+	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
+	node2, err := StartWakuNode("Node2", &node2Config)
+	require.NoError(t, err, "Failed to start Node2")
+
+	enrNode2, err := node2.ENR()
+	require.NoError(t, err, "Failed to get ENR for Node2")
+
+	node3Config := DefaultWakuConfig
+	node3Config.Relay = false
+	node3Config.Discv5BootstrapNodes = []string{enrNode2.String()}
+
+	Debug("Creating Node3 with Node2 as Discv5 bootstrap")
+	node3, err := StartWakuNode("Node3", &node3Config)
+	require.NoError(t, err, "Failed to start Node3")
+
+	defer func() {
+		Debug("Stopping and destroying all Waku nodes")
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+		node3.StopAndDestroy()
+	}()
+
+	defaultPubsubTopic := DefaultPubsubTopic
+	Debug("Default pubsub topic retrieved: %s", defaultPubsubTopic)
+
+	err = SubscribeNodesToTopic([]*WakuNode{node1, node2}, defaultPubsubTopic)
+	require.NoError(t, err, "Failed to subscribe nodes to the topic")
+
+	Debug("Waiting for nodes to auto-connect via Discv5")
+	err = WaitForAutoConnection([]*WakuNode{node1, node2})
+	require.NoError(t, err, "Nodes did not auto-connect within timeout")
+
+	Debug("Creating and publishing message from Node1")
+	message := node1.CreateMessage()
+	msgHash, err := node1.RelayPublishNoCTX(defaultPubsubTopic, message)
+	require.NoError(t, err, "Failed to publish message from Node1")
+
+	Debug("Waiting to ensure message delivery")
+	time.Sleep(3 * time.Second)
+
+	Debug("Verifying that Node2 received the message")
+	err = node2.VerifyMessageReceived(message, msgHash)
+	require.NoError(t, err, "Node2 should have received the message")
+
+	Debug("Verifying that Node3 did NOT receive the message")
+	err = node3.VerifyMessageReceived(message, msgHash)
+	require.Error(t, err, "Node3 should NOT have received the message")
+
+	Debug("Test successfully verified that Node3 did not receive the message")
+}
+
+func TestPublishWithLargePayload(t *testing.T) {
+	Debug("Starting test to verify message publishing with a payload close to 150KB")
+
+	node1Config := DefaultWakuConfig
+	node1Config.Relay = true
+
+	Debug("Creating Node1 with Relay enabled")
+	node1, err := StartWakuNode("Node1", &node1Config)
+	require.NoError(t, err, "Failed to start Node1")
+
+	enrNode1, err := node1.ENR()
+	require.NoError(t, err, "Failed to get ENR for Node1")
+
+	node2Config := DefaultWakuConfig
+	node2Config.Relay = true
+	node2Config.Discv5BootstrapNodes = []string{enrNode1.String()}
+
+	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
+	node2, err := StartWakuNode("Node2", &node2Config)
+	require.NoError(t, err, "Failed to start Node2")
+
+	defer func() {
+		Debug("Stopping and destroying all Waku nodes")
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+	}()
+
+	defaultPubsubTopic := DefaultPubsubTopic
+	Debug("Default pubsub topic retrieved: %s", defaultPubsubTopic)
+
+	err = SubscribeNodesToTopic([]*WakuNode{node1, node2}, defaultPubsubTopic)
+	require.NoError(t, err, "Failed to subscribe nodes to the topic")
+
+	Debug("Waiting for nodes to auto-connect via Discv5")
+	err = WaitForAutoConnection([]*WakuNode{node1, node2})
+	require.NoError(t, err, "Nodes did not auto-connect within timeout")
+
+	payloadLength := 1024 * 100 // 100KB raw, approximately 150KB when base64 encoded
+	Debug("Generating a large payload of %d bytes", payloadLength)
+
+	largePayload := make([]byte, payloadLength)
+	for i := range largePayload {
+		largePayload[i] = 'a'
+	}
+
+	message := node1.CreateMessage(&pb.WakuMessage{
+		Payload:      largePayload,
+		ContentTopic: "test-content-topic",
+		Timestamp:    proto.Int64(time.Now().UnixNano()),
+	})
+
+	Debug("Publishing message from Node1 with large payload")
+	msgHash, err := node1.RelayPublishNoCTX(defaultPubsubTopic, message)
+	require.NoError(t, err, "Failed to publish message from Node1")
+
+	Debug("Waiting to ensure message propagation")
+	time.Sleep(2 * time.Second)
+
+	Debug("Verifying that Node2 received the message")
+	err = node2.VerifyMessageReceived(message, msgHash)
+	require.NoError(t, err, "Node2 should have received the message")
+
+	Debug("Test successfully verified message publishing with a large payload")
 }

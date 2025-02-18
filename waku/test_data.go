@@ -4,9 +4,11 @@ import (
 	"time"
 
 	"github.com/waku-org/waku-go-bindings/waku/common"
+	"google.golang.org/protobuf/proto"
 )
 
-var DefaultWakuConfig common.WakuConfig
+var DefaultWakuConfig WakuConfig
+var DefaultStoreQueryRequest common.StoreQueryRequest
 
 func init() {
 
@@ -17,7 +19,7 @@ func init() {
 		Error("Failed to get free ports %v %v", err1, err2)
 	}
 
-	DefaultWakuConfig = common.WakuConfig{
+	DefaultWakuConfig = WakuConfig{
 		Relay:           false,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: true,
@@ -29,6 +31,14 @@ func init() {
 		Lightpush:       false,
 		Discv5UdpPort:   udpPort,
 		TcpPort:         tcpPort,
+	}
+
+	DefaultStoreQueryRequest = common.StoreQueryRequest{
+		IncludeData:       true,
+		ContentTopics:     &[]string{"test-content-topic"},
+		PaginationLimit:   proto.Uint64(uint64(50)),
+		PaginationForward: true,
+		TimeStart:         proto.Int64(time.Now().Add(-5 * time.Minute).UnixNano()), // 5 mins before now
 	}
 }
 

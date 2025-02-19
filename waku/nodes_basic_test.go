@@ -19,7 +19,6 @@ func TestBasicWakuNodes(t *testing.T) {
 
 	// Use defer to ensure proper cleanup
 	defer func() {
-		Debug("Stopping and destroying Node")
 		node.StopAndDestroy()
 	}()
 

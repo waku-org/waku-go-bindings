@@ -334,7 +334,6 @@ import (
 	"github.com/waku-org/go-waku/waku/v2/utils"
 	"github.com/waku-org/waku-go-bindings/waku/common"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 const requestTimeout = 30 * time.Second
@@ -683,6 +682,7 @@ func (n *WakuNode) GetConnectedPeers() (peer.IDSlice, error) {
 }
 
 func (n *WakuNode) RelaySubscribe(pubsubTopic string) error {
+	wg := sync.WaitGroup{}
 	if pubsubTopic == "" {
 		err := errors.New("pubsub topic is empty")
 		Error("Failed to subscribe to relay: %v", err)
@@ -696,10 +696,6 @@ func (n *WakuNode) RelaySubscribe(pubsubTopic string) error {
 	}
 
 	Debug("Attempting to subscribe to relay on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
-
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-
 	var resp = C.allocResp(unsafe.Pointer(&wg))
 	var cPubsubTopic = C.CString(pubsubTopic)
 
@@ -707,10 +703,9 @@ func (n *WakuNode) RelaySubscribe(pubsubTopic string) error {
 	defer C.free(unsafe.Pointer(cPubsubTopic))
 
 	Debug("Calling cGoWakuRelaySubscribe on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
+	wg.Add(1)
 	C.cGoWakuRelaySubscribe(n.wakuCtx, cPubsubTopic, resp)
-
-	Debug("Waiting for response from cGoWakuRelaySubscribe on node %s", n.nodeName)
-	wg.Wait() // Ensures the function completes before proceeding
+	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
 		Debug("Successfully subscribed to relay on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
@@ -953,7 +948,7 @@ func (n *WakuNode) RelayPublishNoCTX(pubsubTopic string, message *pb.WakuMessage
 	}
 
 	// Handling context internally with a timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 
 	Debug("Attempting to publish message via relay on node %s", n.nodeName)
@@ -1416,19 +1411,24 @@ func StartWakuNode(nodeName string, customCfg *WakuConfig) (*WakuNode, error) {
 	var nodeCfg WakuConfig
 	if customCfg == nil {
 		nodeCfg = DefaultWakuConfig
-
 	} else {
 		nodeCfg = *customCfg
 	}
 
-	tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0)
-	if err != nil {
-		Error("Failed to allocate unique ports: %v", err)
-		tcpPort, udpPort = 0, 0 // Fallback to OS-assigned ports
-	}
+	if nodeCfg.TcpPort == 0 || nodeCfg.Discv5UdpPort == 0 {
+		tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0)
+		if err != nil {
+			Error("Failed to allocate unique ports: %v", err)
+			tcpPort, udpPort = 0, 0
+		}
 
-	nodeCfg.TcpPort = tcpPort
-	nodeCfg.Discv5UdpPort = udpPort
+		if nodeCfg.TcpPort == 0 {
+			nodeCfg.TcpPort = tcpPort
+		}
+		if nodeCfg.Discv5UdpPort == 0 {
+			nodeCfg.Discv5UdpPort = udpPort
+		}
+	}
 
 	Debug("Creating %s", nodeName)
 	node, err := NewWakuNode(&nodeCfg, nodeName)
@@ -1448,6 +1448,7 @@ func StartWakuNode(nodeName string, customCfg *WakuConfig) (*WakuNode, error) {
 }
 
 func (n *WakuNode) StopAndDestroy() error {
+	Debug("Stopping and destroying Node")
 	if n == nil {
 		err := errors.New("waku node is nil")
 		Error("Failed to stop and destroy: %v", err)
@@ -1550,91 +1551,11 @@ func ConnectAllPeers(nodes []*WakuNode) error {
 	return nil
 }
 
-func (n *WakuNode) VerifyMessageReceived(expectedMessage *pb.WakuMessage, expectedHash common.MessageHash) error {
-	timeout := 3 * time.Second
-	Debug("Verifying if the message was received on node %s, timeout: %v", n.nodeName, timeout)
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	select {
-	case envelope := <-n.MsgChan:
-		if envelope == nil {
-			Error("Received envelope is nil on node %s", n.nodeName)
-			return errors.New("received envelope is nil")
-		}
-		if string(expectedMessage.Payload) != string(envelope.Message().Payload) {
-			Error("Payload does not match on node %s", n.nodeName)
-			return errors.New("payload does not match")
-		}
-		if expectedMessage.ContentTopic != envelope.Message().ContentTopic {
-			Error("Content topic does not match on node %s", n.nodeName)
-			return errors.New("content topic does not match")
-		}
-		if expectedHash != envelope.Hash() {
-			Error("Message hash does not match on node %s", n.nodeName)
-			return errors.New("message hash does not match")
-		}
-		Debug("Message received and verified successfully on node %s, Message: %s", n.nodeName, string(envelope.Message().Payload))
-		return nil
-	case <-ctx.Done():
-		Error("Timeout: message not received within %v on node %s", timeout, n.nodeName)
-		return errors.New("timeout: message not received within the given duration")
-	}
-}
-
-func (n *WakuNode) CreateMessage(customMessage ...*pb.WakuMessage) *pb.WakuMessage {
-	Debug("Creating a WakuMessage on node %s", n.nodeName)
-
-	if len(customMessage) > 0 && customMessage[0] != nil {
-		Debug("Using provided custom message on node %s", n.nodeName)
-		return customMessage[0]
-	}
-
-	Debug("Using default message format on node %s", n.nodeName)
-	defaultMessage := &pb.WakuMessage{
-		Payload:      []byte("This is a default Waku message payload"),
-		ContentTopic: "test-content-topic",
-		Version:      proto.Uint32(0),
-		Timestamp:    proto.Int64(time.Now().UnixNano()),
-	}
-
-	Debug("Successfully created a default WakuMessage on node %s", n.nodeName)
-	return defaultMessage
-}
-
-func WaitForAutoConnection(nodeList []*WakuNode) error {
-	Debug("Waiting for auto-connection of nodes...")
-
-	var hardWait = 30 * time.Second
-	Debug("Applying hard wait of %v seconds before checking connections", hardWait.Seconds())
-	time.Sleep(hardWait)
-
-	for _, node := range nodeList {
-		peers, err := node.GetConnectedPeers()
-		if err != nil {
-			Error("Failed to get connected peers for node %s: %v", node.nodeName, err)
-			return err
-		}
-
-		if len(peers) < 1 {
-			Error("Node %s has no connected peers, expected at least 1", node.nodeName)
-			return errors.New("expected at least one connected peer")
-		}
-
-		Debug("Node %s has %d connected peers", node.nodeName, len(peers))
-	}
-
-	Debug("Auto-connection check completed successfully")
-	return nil
-}
-
 func SubscribeNodesToTopic(nodes []*WakuNode, topic string) error {
 	for _, node := range nodes {
 		Debug("Subscribing node %s to topic %s", node.nodeName, topic)
-		err := RetryWithBackOff(func() error {
-			return node.RelaySubscribe(topic)
-		})
+		err := node.RelaySubscribe(topic)
+
 		if err != nil {
 			Error("Failed to subscribe node %s to topic %s: %v", node.nodeName, topic, err)
 			return err

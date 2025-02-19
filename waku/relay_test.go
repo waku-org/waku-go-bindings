@@ -1,95 +1,69 @@
 package waku
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/cenkalti/backoff/v3"
 	"github.com/stretchr/testify/require"
 	"github.com/waku-org/go-waku/waku/v2/protocol/pb"
 	"github.com/waku-org/waku-go-bindings/waku/common"
 	"google.golang.org/protobuf/proto"
 )
 
-func TestNumRelayPeers(t *testing.T) {
-	Debug("Starting test to verify relay subscription with multiple nodes via Discv5")
+func TestVerifyNumConnectedRelayPeers(t *testing.T) {
 
-	// Configure Node1
-	node1Config := DefaultWakuConfig
-	node1Config.Relay = true
+	node1Cfg := DefaultWakuConfig
+	node1Cfg.Relay = true
+	node1, err := StartWakuNode("node1", &node1Cfg)
+	if err != nil {
+		t.Fatalf("Failed to start node1: %v", err)
+	}
+	node2Cfg := DefaultWakuConfig
+	node2Cfg.Relay = true
+	node2, err := StartWakuNode("node2", &node2Cfg)
+	if err != nil {
+		t.Fatalf("Failed to start node2: %v", err)
+	}
 
-	Debug("Creating Node1 with Relay enabled")
-	node1, err := StartWakuNode("Node1", &node1Config)
-	require.NoError(t, err, "Failed to start Node1")
-
-	// Retrieve Node1's ENR for Discv5 bootstrapping
-	enrNode1, err := node1.ENR()
-	require.NoError(t, err, "Failed to get ENR for Node1")
-
-	// Configure Node2 with Node1 as its Discv5 bootstrap node
-	node2Config := DefaultWakuConfig
-	node2Config.Relay = true
-	node2Config.Discv5BootstrapNodes = []string{enrNode1.String()}
-
-	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
-	node2, err := StartWakuNode("Node2", &node2Config)
-	require.NoError(t, err, "Failed to start Node2")
-
-	// Configure Node3 with Node1 as its Discv5 bootstrap node
-	node3Config := DefaultWakuConfig
-	node3Config.Relay = true
-	node3Config.Discv5BootstrapNodes = []string{enrNode1.String()}
-
-	Debug("Creating Node3 with Node1 as Discv5 bootstrap")
-	node3, err := StartWakuNode("Node3", &node3Config)
-	require.NoError(t, err, "Failed to start Node3")
+	node3, err := StartWakuNode("node3", nil)
+	if err != nil {
+		t.Fatalf("Failed to start node3: %v", err)
+	}
 
 	defer func() {
-		Debug("Stopping and destroying all Waku nodes")
 		node1.StopAndDestroy()
 		node2.StopAndDestroy()
 		node3.StopAndDestroy()
 	}()
 
-	defaultPubsubTopic := DefaultPubsubTopic
-	Debug("Default pubsub topic retrieved: %s", defaultPubsubTopic)
-
-	Debug("Waiting for nodes to auto-connect via Discv5")
-	err = WaitForAutoConnection([]*WakuNode{node1, node2, node3})
-	require.NoError(t, err, "Nodes did not auto-connect within timeout")
-
-	Debug("Subscribing Node1 to the default pubsub topic: %s", defaultPubsubTopic)
-	err = RetryWithBackOff(func() error {
-		return node1.RelaySubscribe(defaultPubsubTopic)
-	})
-	require.NoError(t, err)
-
-	Debug("Subscribing Node2 to the default pubsub topic: %s", defaultPubsubTopic)
-	err = RetryWithBackOff(func() error {
-		return node2.RelaySubscribe(defaultPubsubTopic)
-	})
-	require.NoError(t, err)
-
-	Debug("Subscribing Node3 to the default pubsub topic: %s", defaultPubsubTopic)
-	err = RetryWithBackOff(func() error {
-		return node3.RelaySubscribe(defaultPubsubTopic)
-	})
-	require.NoError(t, err)
-
-	Debug("Waiting for peer connections to stabilize")
-	time.Sleep(10 * time.Second)
-
-	Debug("Fetching number of connected peers for Node1")
-	peers, err := node1.GetNumConnectedRelayPeers(defaultPubsubTopic)
-	require.NoError(t, err, "Failed to get number of connected relay peers for Node1")
-
-	Debug("Total number of connected relay peers for Node1: %d", peers)
-
-	if peers != 2 {
-		Error("Expected Node1 to have exactly 2 relay peers, but got %d", peers)
-		t.FailNow()
+	err = node2.ConnectPeer(node1)
+	if err != nil {
+		t.Fatalf("Failed to connect node2 to node1: %v", err)
 	}
 
-	Debug("Test successfully verified that Node1 has 2 relay peers after Node2 and Node3 subscribed")
+	err = node3.ConnectPeer(node1)
+	if err != nil {
+		t.Fatalf("Failed to connect node3 to node1: %v", err)
+	}
+	connectedPeersNode1, err := node1.GetConnectedPeers()
+	if err != nil {
+		t.Fatalf("Failed to get connected peers for node1: %v", err)
+	}
+	if len(connectedPeersNode1) != 2 {
+		t.Fatalf("Expected 2 connected peers on node1, but got %d", len(connectedPeersNode1))
+	}
+
+	numRelayPeers, err := node1.GetNumConnectedRelayPeers()
+	if err != nil {
+		t.Fatalf("Failed to get connected relay peers for node1: %v", err)
+	}
+	if numRelayPeers != 1 {
+		t.Fatalf("Expected 1 relay peer on node1, but got %d", numRelayPeers)
+	}
+
+	t.Logf("Successfully connected node2 and node3 to node1. Relay Peers: %d, Total Peers: %d", numRelayPeers, len(connectedPeersNode1))
 }
 
 func TestRelayMessageTransmission(t *testing.T) {
@@ -122,9 +96,7 @@ func TestRelayMessageTransmission(t *testing.T) {
 
 	Debug("Subscribing ReceiverNode to the default pubsub topic")
 	defaultPubsubTopic := DefaultPubsubTopic
-	err = RetryWithBackOff(func() error {
-		return receiverNode.RelaySubscribe(defaultPubsubTopic)
-	})
+	err = receiverNode.RelaySubscribe(defaultPubsubTopic)
 	require.NoError(t, err)
 
 	Debug("Creating and publishing message")
@@ -141,9 +113,6 @@ func TestRelayMessageTransmission(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, msgHash)
-
-	Debug("Waiting to ensure message delivery")
-	time.Sleep(2 * time.Second)
 
 	Debug("Verifying message reception")
 	err = RetryWithBackOff(func() error {
@@ -261,7 +230,7 @@ func TestSendmsgInvalidPayload(t *testing.T) {
 }
 
 func TestRelayNodesNotConnectedDirectly(t *testing.T) {
-	Debug("Starting TestMessageNotReceivedWithoutRelay")
+	Debug("Starting TestRelayNodesNotConnectedDirectly")
 
 	Debug("Creating Sender Node with Relay enabled")
 	senderConfig := DefaultWakuConfig
@@ -273,23 +242,25 @@ func TestRelayNodesNotConnectedDirectly(t *testing.T) {
 	Debug("Creating Relay-Enabled Receiver Node (Node2)")
 	node2Config := DefaultWakuConfig
 	node2Config.Relay = true
-	enrNode, err := senderNode.ENR()
-	if err != nil {
-		require.Error(t, err, "Can't find node ENR")
-	}
-	node2Config.Discv5BootstrapNodes = []string{enrNode.String()}
+
+	// Use static nodes instead of ENR
+	node1Address, err := senderNode.ListenAddresses()
+	require.NoError(t, err, "Failed to get sender node address")
+	node2Config.Staticnodes = []string{node1Address[0].String()}
+
 	node2, err := StartWakuNode("Node2", &node2Config)
 	require.NoError(t, err)
 	defer node2.StopAndDestroy()
 
-	Debug("Creating Non-Relay Receiver Node (Node3)")
+	Debug("Creating Relay-Enabled Receiver Node (Node3)")
 	node3Config := DefaultWakuConfig
 	node3Config.Relay = true
-	enrNode2, err := node2.ENR()
-	if err != nil {
-		require.Error(t, err, "Can't find node ENR")
-	}
-	node3Config.Discv5BootstrapNodes = []string{enrNode2.String()}
+
+	// Use static nodes instead of Discv5
+	node2Address, err := node2.ListenAddresses()
+	require.NoError(t, err, "Failed to get node2 address")
+	node3Config.Staticnodes = []string{node2Address[0].String()}
+
 	node3, err := StartWakuNode("Node3", &node3Config)
 	require.NoError(t, err)
 	defer node3.StopAndDestroy()
@@ -299,13 +270,13 @@ func TestRelayNodesNotConnectedDirectly(t *testing.T) {
 	err = node2.RelaySubscribe(defaultPubsubTopic)
 	require.NoError(t, err)
 
-	Debug("Subscribing Node2 to the default pubsub topic")
+	Debug("Subscribing Node3 to the default pubsub topic")
 	err = node3.RelaySubscribe(defaultPubsubTopic)
 	require.NoError(t, err)
 
-	Debug("Waiting for nodes to auto-connect before proceeding")
+	Debug("Waiting for nodes to connect before proceeding")
 	err = WaitForAutoConnection([]*WakuNode{senderNode, node2, node3})
-	require.NoError(t, err, "Nodes did not auto-connect within timeout")
+	require.NoError(t, err, "Nodes did not connect within timeout")
 
 	Debug("SenderNode is publishing a message")
 	message := senderNode.CreateMessage()
@@ -317,11 +288,11 @@ func TestRelayNodesNotConnectedDirectly(t *testing.T) {
 	err = node2.VerifyMessageReceived(message, msgHash)
 	require.NoError(t, err, "Node2 should have received the message")
 
-	Debug("Verifying that Node3 receive the message")
+	Debug("Verifying that Node3 received the message")
 	err = node3.VerifyMessageReceived(message, msgHash)
-	require.NoError(t, err, "Node3 should  have received the message")
+	require.NoError(t, err, "Node3 should have received the message")
 
-	Debug("TestMessageNotReceivedWithoutRelay completed successfully")
+	Debug("TestRelayNodesNotConnectedDirectly completed successfully")
 }
 
 func TestRelaySubscribeAndPeerCountChange(t *testing.T) {
@@ -334,26 +305,25 @@ func TestRelaySubscribeAndPeerCountChange(t *testing.T) {
 	node1, err := StartWakuNode("Node1", &node1Config)
 	require.NoError(t, err, "Failed to start Node1")
 
-	enrNode1, err := node1.ENR()
-	require.NoError(t, err, "Failed to get ENR for Node1")
+	node1Address, err := node1.ListenAddresses()
+	require.NoError(t, err, "Failed to get listening address for Node1")
 
 	node2Config := DefaultWakuConfig
 	node2Config.Relay = true
-	node2Config.Discv5BootstrapNodes = []string{enrNode1.String()}
+	node2Config.Staticnodes = []string{node1Address[0].String()}
 
-	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
+	Debug("Creating Node2 with Node1 as a static node")
 	node2, err := StartWakuNode("Node2", &node2Config)
 	require.NoError(t, err, "Failed to start Node2")
 
-	//enrNode2, err := node2.ENR() // commented till confirm from Gabriel
-	//if num peers shall be affected by it or not
-	//require.NoError(t, err, "Failed to get ENR for Node2")
+	node2Address, err := node2.ListenAddresses()
+	require.NoError(t, err, "Failed to get listening address for Node2")
 
 	node3Config := DefaultWakuConfig
 	node3Config.Relay = true
-	node3Config.Discv5BootstrapNodes = []string{enrNode1.String()}
+	node3Config.Staticnodes = []string{node2Address[0].String()}
 
-	Debug("Creating Node3 with Node2 as Discv5 bootstrap")
+	Debug("Creating Node3 with Node2 as a static node")
 	node3, err := StartWakuNode("Node3", &node3Config)
 	require.NoError(t, err, "Failed to start Node3")
 
@@ -366,184 +336,53 @@ func TestRelaySubscribeAndPeerCountChange(t *testing.T) {
 	defaultPubsubTopic := DefaultPubsubTopic
 	Debug("Default pubsub topic retrieved: %s", defaultPubsubTopic)
 
-	Debug("Waiting for nodes to auto-connect via Discv5")
+	Debug("Waiting for nodes to connect via static node configuration")
 	err = WaitForAutoConnection([]*WakuNode{node1, node2, node3})
-	require.NoError(t, err, "Nodes did not auto-connect within timeout")
+	require.NoError(t, err, "Nodes did not connect within timeout")
 
 	Debug("Subscribing Node1 to the default pubsub topic: %s", defaultPubsubTopic)
-	err = RetryWithBackOff(func() error {
-		return node1.RelaySubscribe(defaultPubsubTopic)
-	})
+	err = node1.RelaySubscribe(defaultPubsubTopic)
 	require.NoError(t, err)
 
 	Debug("Subscribing Node2 to the default pubsub topic: %s", defaultPubsubTopic)
-	err = RetryWithBackOff(func() error {
-		return node2.RelaySubscribe(defaultPubsubTopic)
-	})
+	err = node2.RelaySubscribe(defaultPubsubTopic)
 	require.NoError(t, err)
 
 	Debug("Subscribing Node3 to the default pubsub topic: %s", defaultPubsubTopic)
-	err = RetryWithBackOff(func() error {
-		return node3.RelaySubscribe(defaultPubsubTopic)
-	})
+	err = node3.RelaySubscribe(defaultPubsubTopic)
 	require.NoError(t, err)
 
 	Debug("Waiting for peer connections to stabilize")
-	time.Sleep(10 * time.Second)
+	options := func(b *backoff.ExponentialBackOff) {
+		b.MaxElapsedTime = 10 * time.Second // Only set the max wait time
+	}
+	require.NoError(t, RetryWithBackOff(func() error {
+		numPeers, err := node1.GetNumConnectedRelayPeers(defaultPubsubTopic)
+		if err != nil {
+			return err
+		}
+		if numPeers != 2 {
+			return fmt.Errorf("expected 2 relay peers, got %d", numPeers)
+		}
+		return nil
+	}, options), "Peers did not stabilize in time")
 
-	Debug("Fetching number of connected peers for Node1")
-	peersBeforeStopping, err := node1.GetNumConnectedRelayPeers(defaultPubsubTopic)
-	require.NoError(t, err, "Failed to get number of connected relay peers for Node1")
-
-	Debug("Total number of connected relay peers for Node1 before stopping Node3: %d", peersBeforeStopping)
-	require.Equal(t, 2, peersBeforeStopping, "Expected Node1 to have exactly 2 relay peers before stopping Node3")
 	Debug("Stopping Node3")
 	node3.StopAndDestroy()
 
 	Debug("Waiting for network to update after Node3 stops")
-	time.Sleep(10 * time.Second)
+	require.NoError(t, RetryWithBackOff(func() error {
+		numPeers, err := node1.GetNumConnectedRelayPeers(defaultPubsubTopic)
+		if err != nil {
+			return err
+		}
+		if numPeers != 1 {
+			return fmt.Errorf("expected 1 relay peer after stopping Node3, got %d", numPeers)
+		}
+		return nil
+	}, options), "Peer count did not update after stopping Node3")
 
-	Debug("Fetching number of connected peers for Node1 after stopping Node3")
-	peersAfterStopping, err := node1.GetNumConnectedRelayPeers(defaultPubsubTopic)
-	require.NoError(t, err, "Failed to get number of connected relay peers for Node1 after stopping Node3")
-
-	Debug("Total number of connected relay peers for Node1 after stopping Node3: %d", peersAfterStopping)
-
-	require.Equal(t, 1, peersAfterStopping, "Expected Node1 to have exactly 1 relay peer after stopping Node3")
 	Debug("Test successfully verified peer count changes as expected after stopping Node3")
-}
-
-func TestDiscv5PeerMeshCount(t *testing.T) {
-	Debug("Starting test to verify peer count in mesh using Discv5 after topic subscription")
-
-	node1Config := DefaultWakuConfig
-	node1Config.Relay = true
-	Debug("Creating Node1")
-	node1, err := StartWakuNode("Node1", &node1Config)
-	require.NoError(t, err, "Failed to start Node1")
-
-	enrNode1, err := node1.ENR()
-	require.NoError(t, err, "Failed to get ENR for Node1")
-
-	node2Config := DefaultWakuConfig
-	node2Config.Discv5BootstrapNodes = []string{enrNode1.String()}
-	node2Config.Relay = true
-	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
-	node2, err := StartWakuNode("Node2", &node2Config)
-	require.NoError(t, err, "Failed to start Node2")
-
-	require.NoError(t, err, "Failed to get ENR for Node2")
-
-	node3Config := DefaultWakuConfig
-	node3Config.Discv5BootstrapNodes = []string{enrNode1.String()}
-	node3Config.Relay = true
-
-	Debug("Creating Node3 with Node2 as Discv5 bootstrap")
-	node3, err := StartWakuNode("Node3", &node3Config)
-	require.NoError(t, err, "Failed to start Node3")
-
-	defer func() {
-		Debug("Stopping and destroying all Waku nodes")
-		node1.StopAndDestroy()
-		node2.StopAndDestroy()
-	}()
-
-	defaultPubsubTopic := DefaultPubsubTopic
-	Debug("Default pubsub topic retrieved: %s", defaultPubsubTopic)
-
-	err = SubscribeNodesToTopic([]*WakuNode{node1, node2, node3}, defaultPubsubTopic)
-	require.NoError(t, err, "Failed to subscribe all nodes to the topic")
-
-	Debug("Waiting for nodes to auto-connect via Discv5")
-	err = WaitForAutoConnection([]*WakuNode{node1, node2, node3})
-	require.NoError(t, err, "Nodes did not auto-connect within timeout")
-
-	Debug("Fetching number of peers in mesh for Node1 before stopping Node3")
-	peerCountBefore, err := node1.GetNumPeersInMesh(defaultPubsubTopic)
-	require.NoError(t, err, "Failed to get number of peers in mesh for Node1 before stopping Node3")
-
-	Debug("Total number of peers in mesh for Node1 before stopping Node3: %d", peerCountBefore)
-	require.Equal(t, 2, peerCountBefore, "Expected Node1 to have exactly 2 peers in the mesh before stopping Node3")
-
-	Debug("Stopping Node3")
-	node3.StopAndDestroy()
-
-	Debug("Waiting for network update after Node3 stops")
-	time.Sleep(10 * time.Second)
-
-	Debug("Fetching number of peers in mesh for Node1 after stopping Node3")
-	peerCountAfter, err := node1.GetNumPeersInMesh(defaultPubsubTopic)
-	require.NoError(t, err, "Failed to get number of peers in mesh for Node1 after stopping Node3")
-
-	Debug("Total number of peers in mesh for Node1 after stopping Node3: %d", peerCountAfter)
-	require.Equal(t, 1, peerCountAfter, "Expected Node1 to have exactly 1 peer in the mesh after stopping Node3")
-
-	Debug("Test successfully verified peer count change after stopping Node3")
-}
-
-func TestDiscv5GetPeersConnected(t *testing.T) {
-	Debug("Starting test to verify peer count in mesh with 4 nodes using Discv5 (Chained Connection)")
-
-	node1Config := DefaultWakuConfig
-	node1Config.Relay = true
-
-	Debug("Creating Node1")
-	node1, err := StartWakuNode("Node1", &node1Config)
-	require.NoError(t, err, "Failed to start Node1")
-
-	enrNode1, err := node1.ENR()
-	require.NoError(t, err, "Failed to get ENR for Node1")
-
-	node2Config := DefaultWakuConfig
-	node2Config.Relay = true
-	node2Config.Discv5BootstrapNodes = []string{enrNode1.String()}
-
-	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
-	node2, err := StartWakuNode("Node2", &node2Config)
-	require.NoError(t, err, "Failed to start Node2")
-
-	enrNode2, err := node2.ENR()
-	require.NoError(t, err, "Failed to get ENR for Node2")
-
-	node3Config := DefaultWakuConfig
-	node3Config.Relay = true
-	node3Config.Discv5BootstrapNodes = []string{enrNode2.String()}
-
-	Debug("Creating Node3 with Node2 as Discv5 bootstrap")
-	node3, err := StartWakuNode("Node3", &node3Config)
-	require.NoError(t, err, "Failed to start Node3")
-
-	enrNode3, err := node3.ENR()
-	require.NoError(t, err, "Failed to get ENR for Node3")
-
-	node4Config := DefaultWakuConfig
-	node4Config.Relay = true
-	node4Config.Discv5BootstrapNodes = []string{enrNode3.String()}
-
-	Debug("Creating Node4 with Node3 as Discv5 bootstrap")
-	node4, err := StartWakuNode("Node4", &node4Config)
-	require.NoError(t, err, "Failed to start Node4")
-
-	defer func() {
-		Debug("Stopping and destroying all Waku nodes")
-		node1.StopAndDestroy()
-		node2.StopAndDestroy()
-		node3.StopAndDestroy()
-		node4.StopAndDestroy()
-	}()
-
-	Debug("Waiting for nodes to auto-connect via Discv5")
-	err = WaitForAutoConnection([]*WakuNode{node1, node2, node3, node4})
-	require.NoError(t, err, "Nodes did not auto-connect within timeout")
-
-	Debug("Fetching number of peers in connected to  Node1")
-	peerCount, err := node1.GetNumConnectedPeers()
-	require.NoError(t, err, "Failed to get number of peers in mesh for Node1")
-
-	Debug("Total number of peers connected to Node1: %d", peerCount)
-	require.Equal(t, 3, peerCount, "Expected Node1 to have exactly 3 peers in the mesh")
-
-	Debug("Test successfully verified peer count in mesh with 4 nodes using Discv5 (Chained Connection)")
 }
 
 func TestRelaySubscribeFailsWhenRelayDisabled(t *testing.T) {

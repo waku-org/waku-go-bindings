@@ -94,18 +94,13 @@ func TestRelayMessageTransmission(t *testing.T) {
 	err = WaitForAutoConnection([]*WakuNode{senderNode, receiverNode})
 	require.NoError(t, err, "Nodes did not auto-connect within timeout")
 
-	Debug("Subscribing ReceiverNode to the default pubsub topic")
-	defaultPubsubTopic := DefaultPubsubTopic
-	err = receiverNode.RelaySubscribe(defaultPubsubTopic)
-	require.NoError(t, err)
-
 	Debug("Creating and publishing message")
 	message := senderNode.CreateMessage()
 	var msgHash string
 
 	err = RetryWithBackOff(func() error {
 		var err error
-		msgHashObj, err := senderNode.RelayPublishNoCTX(defaultPubsubTopic, message)
+		msgHashObj, err := senderNode.RelayPublishNoCTX(DefaultPubsubTopic, message)
 		if err == nil {
 			msgHash = msgHashObj.String()
 		}
@@ -145,12 +140,6 @@ func TestRelayMessageBroadcast(t *testing.T) {
 		require.NoError(t, err)
 		defer node.StopAndDestroy()
 		nodes[i] = node
-	}
-
-	Debug("Subscribing nodes to the default pubsub topic")
-	for _, node := range nodes {
-		err := node.RelaySubscribe(defaultPubsubTopic)
-		require.NoError(t, err)
 	}
 
 	WaitForAutoConnection(nodes)
@@ -197,10 +186,6 @@ func TestSendmsgInvalidPayload(t *testing.T) {
 	receiverNode, err := StartWakuNode("receiverNode", &receiverNodeConfig)
 	require.NoError(t, err)
 	defer receiverNode.StopAndDestroy()
-
-	Debug("Subscribing SenderNode to the default pubsub topic")
-	err = senderNode.RelaySubscribe(defaultPubsubTopic)
-	require.NoError(t, err)
 
 	err = WaitForAutoConnection([]*WakuNode{senderNode, receiverNode})
 	require.NoError(t, err, "Nodes did not auto-connect within timeout")
@@ -265,22 +250,13 @@ func TestRelayNodesNotConnectedDirectly(t *testing.T) {
 	require.NoError(t, err)
 	defer node3.StopAndDestroy()
 
-	Debug("Subscribing Node2 to the default pubsub topic")
-	defaultPubsubTopic := DefaultPubsubTopic
-	err = node2.RelaySubscribe(defaultPubsubTopic)
-	require.NoError(t, err)
-
-	Debug("Subscribing Node3 to the default pubsub topic")
-	err = node3.RelaySubscribe(defaultPubsubTopic)
-	require.NoError(t, err)
-
 	Debug("Waiting for nodes to connect before proceeding")
 	err = WaitForAutoConnection([]*WakuNode{senderNode, node2, node3})
 	require.NoError(t, err, "Nodes did not connect within timeout")
 
 	Debug("SenderNode is publishing a message")
 	message := senderNode.CreateMessage()
-	msgHash, err := senderNode.RelayPublishNoCTX(defaultPubsubTopic, message)
+	msgHash, err := senderNode.RelayPublishNoCTX(DefaultPubsubTopic, message)
 	require.NoError(t, err)
 	require.NotEmpty(t, msgHash)
 
@@ -339,18 +315,6 @@ func TestRelaySubscribeAndPeerCountChange(t *testing.T) {
 	Debug("Waiting for nodes to connect via static node configuration")
 	err = WaitForAutoConnection([]*WakuNode{node1, node2, node3})
 	require.NoError(t, err, "Nodes did not connect within timeout")
-
-	Debug("Subscribing Node1 to the default pubsub topic: %s", defaultPubsubTopic)
-	err = node1.RelaySubscribe(defaultPubsubTopic)
-	require.NoError(t, err)
-
-	Debug("Subscribing Node2 to the default pubsub topic: %s", defaultPubsubTopic)
-	err = node2.RelaySubscribe(defaultPubsubTopic)
-	require.NoError(t, err)
-
-	Debug("Subscribing Node3 to the default pubsub topic: %s", defaultPubsubTopic)
-	err = node3.RelaySubscribe(defaultPubsubTopic)
-	require.NoError(t, err)
 
 	Debug("Waiting for peer connections to stabilize")
 	options := func(b *backoff.ExponentialBackOff) {

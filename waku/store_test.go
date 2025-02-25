@@ -533,7 +533,7 @@ func TestQueryFailWithIncorrectStaticNode(t *testing.T) {
 	node2Config := DefaultWakuConfig
 	node2Config.Relay = true
 	node2Config.Store = true
-	node2Config.Staticnodes = []string{node1Address[0].String()} // Node2 connects to Node1
+	node2Config.Staticnodes = []string{node1Address[0].String()}
 
 	Debug("Creating Node2 with Store enabled")
 	node2, err := StartWakuNode("Node2", &node2Config)
@@ -562,21 +562,20 @@ func TestQueryFailWithIncorrectStaticNode(t *testing.T) {
 	}()
 
 	Debug("Sender Node1 is publishing a message")
+	queryTimestamp := proto.Int64(time.Now().UnixNano())
 	message := node1.CreateMessage()
 	msgHash, err := node1.RelayPublishNoCTX(DefaultPubsubTopic, message)
 	require.NoError(t, err)
 	require.NotEmpty(t, msgHash)
 
 	Debug("Verifying that Node3 fails to retrieve stored messages due to incorrect static node")
-	//storeQueryRequest := &common.StoreQueryRequest{
-	//TimeStart: proto.Int64(time.Now().UnixNano()), // Query messages published after this timestamp
-	//	}
-	storedmsgs, err := node3.GetStoredMessages(node2, nil)
-	require.NoError(t, err, "Expected Node3's store query to fail due to incorrect static node")
-	//require.NoEmpty(t, storedMessages, "Expected no messages in store for Node3")
-	if (storedmsgs.Messages) != nil {
-		Debug("First Stored Message: Payload: %s", string((*storedmsgs.Messages)[0].WakuMessage.Payload))
+	storeQueryRequest := &common.StoreQueryRequest{
+		TimeStart: queryTimestamp,
 	}
+	storedmsgs, err := node3.GetStoredMessages(node2, storeQueryRequest)
+	require.NoError(t, err, "Expected Node3's store query to fail due to incorrect static node")
+	require.Nil(t, (*storedmsgs.Messages)[0].WakuMessage, "Expected no messages in store for Node3")
+
 	Debug("Test successfully verified store query failure due to incorrect static node configuration")
 }
 
@@ -915,4 +914,115 @@ func TestStoredMessagesWithVDifferentPayloads(t *testing.T) {
 	}
 
 	Debug("Test finished successfully ")
+}
+
+func TestStoredMessagesWithDifferentContentTopics(t *testing.T) {
+	Debug("Starting test for different content topics")
+
+	node1Config := DefaultWakuConfig
+	node1Config.Relay = true
+
+	Debug("Creating Node1")
+	node1, err := StartWakuNode("Node1", &node1Config)
+	require.NoError(t, err, "Failed to start Node1")
+
+	node2Config := DefaultWakuConfig
+	node2Config.Relay = true
+	node2Config.Store = true
+
+	Debug("Creating Node2")
+	node2, err := StartWakuNode("Node2", &node2Config)
+	require.NoError(t, err, "Failed to start Node2")
+
+	defer func() {
+		Debug("Stopping and destroying both nodes")
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+	}()
+
+	Debug("Connecting Node2 to Node1")
+	err = node2.ConnectPeer(node1)
+	require.NoError(t, err, "Failed to connect Node2 to Node1")
+
+	for _, contentTopic := range CONTENT_TOPICS_DIFFERENT_SHARDS {
+
+		Debug("Node1 is publishing message with content topic: %s", contentTopic)
+		queryTimestamp := proto.Int64(time.Now().UnixNano())
+		message := node1.CreateMessage()
+		message.ContentTopic = contentTopic
+
+		msgHash, err := node1.RelayPublishNoCTX(DefaultPubsubTopic, message)
+		require.NoError(t, err, "Failed to publish message")
+		require.NotEmpty(t, msgHash, "Message hash is empty")
+
+		Debug("Querying stored messages from Node2 using Node1")
+		storeQueryRequest := &common.StoreQueryRequest{
+			TimeStart:     queryTimestamp,
+			IncludeData:   true,
+			ContentTopics: &[]string{contentTopic},
+		}
+
+		storedmsgs, err := node1.GetStoredMessages(node2, storeQueryRequest)
+		require.NoError(t, err, "Failed to query store messages from Node2")
+		require.Greater(t, len(*storedmsgs.Messages), 0, "Expected at least one stored message")
+		require.Equal(t, contentTopic, (*storedmsgs.Messages)[0].WakuMessage.ContentTopic, "Stored message content topic does not match expected")
+		Debug("Veified content topic %s ", (*storedmsgs.Messages)[0].WakuMessage.ContentTopic)
+	}
+
+	Debug("Test finished successfully")
+}
+
+func TestStoredMessagesWithDifferentPubsubTopics(t *testing.T) {
+	Debug("Starting test for different pubsub topics")
+
+	node1Config := DefaultWakuConfig
+	node1Config.Relay = true
+
+	Debug("Creating Node1")
+	node1, err := StartWakuNode("Node1", &node1Config)
+	require.NoError(t, err, "Failed to start Node1")
+
+	node2Config := DefaultWakuConfig
+	node2Config.Relay = true
+	node2Config.Store = true
+
+	Debug("Creating Node2")
+	node2, err := StartWakuNode("Node2", &node2Config)
+	require.NoError(t, err, "Failed to start Node2")
+
+	defer func() {
+		Debug("Stopping and destroying both nodes")
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+	}()
+
+	Debug("Connecting Node2 to Node1")
+	err = node2.ConnectPeer(node1)
+	require.NoError(t, err, "Failed to connect Node2 to Node1")
+
+	for _, pubsubTopic := range PUBSUB_TOPICS_STORE {
+
+		Debug("Node1 is publishing message on pubsub topic: %s", pubsubTopic)
+		node1.RelaySubscribe(pubsubTopic)
+		node2.RelaySubscribe(pubsubTopic)
+		queryTimestamp := proto.Int64(time.Now().UnixNano())
+		var msg = node1.CreateMessage()
+		msgHash, err := node1.RelayPublishNoCTX(pubsubTopic, msg)
+		require.NoError(t, err, "Failed to publish message")
+		require.NotEmpty(t, msgHash, "Message hash is empty")
+
+		Debug("Querying stored messages from Node2 using Node1")
+		storeQueryRequest := &common.StoreQueryRequest{
+			TimeStart:   queryTimestamp,
+			IncludeData: true,
+			PubsubTopic: pubsubTopic,
+		}
+
+		storedmsgs, err := node1.GetStoredMessages(node2, storeQueryRequest)
+		require.NoError(t, err, "Failed to query store messages from Node2")
+		require.Greater(t, len(*storedmsgs.Messages), 0, "Expected at least one stored message")
+		require.Equal(t, pubsubTopic, (*storedmsgs.Messages)[0].PubsubTopic, "Stored message pubsub topic does not match expected")
+	}
+
+	Debug("Test finished successfully")
 }

@@ -325,6 +325,7 @@ import (
 	"unsafe"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/libp2p/go-libp2p/core/peer"
 	libp2pproto "github.com/libp2p/go-libp2p/core/protocol"
@@ -512,12 +513,11 @@ func globalEventCallback(callerRet C.int, msg *C.char, len C.size_t, userData un
 			node.OnEvent(eventStr)
 		}
 	} else {
+		errMsgField := zap.Skip()
 		if len != 0 {
-			errMsg := C.GoStringN(msg, C.int(len))
-			Error("globalEventCallback retCode not ok, retCode: %v: %v", callerRet, errMsg)
-		} else {
-			Error("globalEventCallback retCode not ok, retCode: %v", callerRet)
+			errMsgField = zap.String("error", C.GoStringN(msg, C.int(len)))
 		}
+		log.Error("globalEventCallback retCode not ok", zap.Int("retCode", int(callerRet)), errMsgField)
 	}
 }
 
@@ -666,18 +666,18 @@ func (n *WakuNode) GetConnectedPeers() (peer.IDSlice, error) {
 		for _, peerID := range peerIDs {
 			id, err := peer.Decode(peerID)
 			if err != nil {
-				Error("Failed to decode peer ID for %v: %v", n.nodeName, err)
+				Error("Failed to decode peer ID for "+n.nodeName, zap.Error(err))
 				return nil, err
 			}
 			peers = append(peers, id)
 		}
 
-		Debug("Successfully fetched connected peers for %v, count: %v", n.nodeName, len(peers))
+		Debug("Successfully fetched connected peers for "+n.nodeName, zap.Int("count", len(peers)))
 		return peers, nil
 	}
 
 	errMsg := "error GetConnectedPeers: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
-	Error("Failed to get connected peers for %v: %v", n.nodeName, errMsg)
+	Error("Failed to get connected peers for "+n.nodeName, zap.String("error", errMsg))
 
 	return nil, errors.New(errMsg)
 }
@@ -1097,7 +1097,7 @@ func (n *WakuNode) Destroy() error {
 	}
 
 	errMsg := "error WakuDestroy: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
-	Error("Failed to destroy %v: %v", n.nodeName, errMsg)
+	Error("Failed to destroy "+n.nodeName, zap.String("error", errMsg))
 
 	return errors.New(errMsg)
 }
@@ -1341,7 +1341,7 @@ func (n *WakuNode) GetNumConnectedPeers() (int, error) {
 	}
 
 	numPeers := len(peers)
-	Debug("Successfully fetched number of connected peers for %v, count: %v", n.nodeName, numPeers)
+	Debug("Successfully fetched number of connected peers for "+n.nodeName, zap.Int("count", numPeers))
 
 	return numPeers, nil
 }
@@ -1363,7 +1363,7 @@ func GetFreePortIfNeeded(tcpPort int, discV5UDPPort int) (int, int, error) {
 		for i := 0; i < 10; i++ {
 			tcpAddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort("localhost", "0"))
 			if err != nil {
-				Warn("unable to resolve tcp addr: %v", err)
+				Warn("unable to resolve tcp addr: %v", zap.Error(err))
 				continue
 			}
 			tcpListener, err := net.ListenTCP("tcp", tcpAddr)

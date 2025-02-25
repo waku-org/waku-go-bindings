@@ -1,6 +1,7 @@
 package waku
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/waku-org/waku-go-bindings/waku/common"
@@ -9,6 +10,7 @@ import (
 
 var DefaultWakuConfig WakuConfig
 var DefaultStoreQueryRequest common.StoreQueryRequest
+var DEFAULT_CLUSTER_ID = 16
 
 func init() {
 
@@ -24,13 +26,13 @@ func init() {
 		LogLevel:        "DEBUG",
 		Discv5Discovery: true,
 		ClusterID:       16,
-		Shards:          []uint16{64},
-		PeerExchange:    false,
-		Store:           false,
-		Filter:          false,
-		Lightpush:       false,
-		Discv5UdpPort:   udpPort,
-		TcpPort:         tcpPort,
+		//Shards:          []uint16{64},
+		PeerExchange:  false,
+		Store:         false,
+		Filter:        false,
+		Lightpush:     false,
+		Discv5UdpPort: udpPort,
+		TcpPort:       tcpPort,
 	}
 
 	DefaultStoreQueryRequest = common.StoreQueryRequest{
@@ -94,4 +96,28 @@ var SAMPLE_INPUTS = []struct {
 	{"A date in common format", "01/11/2023"},
 	{"A time string", "12:00:00"},
 	{"A mathematical equation", "E = mc^2"},
+}
+
+var PUBSUB_TOPICS_STORE = []string{
+
+	fmt.Sprintf("/waku/2/rs/%d/0", DEFAULT_CLUSTER_ID),
+	fmt.Sprintf("/waku/2/rs/%d/1", DEFAULT_CLUSTER_ID),
+	fmt.Sprintf("/waku/2/rs/%d/2", DEFAULT_CLUSTER_ID),
+	fmt.Sprintf("/waku/2/rs/%d/3", DEFAULT_CLUSTER_ID),
+	fmt.Sprintf("/waku/2/rs/%d/4", DEFAULT_CLUSTER_ID),
+	fmt.Sprintf("/waku/2/rs/%d/5", DEFAULT_CLUSTER_ID),
+	fmt.Sprintf("/waku/2/rs/%d/6", DEFAULT_CLUSTER_ID),
+	fmt.Sprintf("/waku/2/rs/%d/7", DEFAULT_CLUSTER_ID),
+	fmt.Sprintf("/waku/2/rs/%d/8", DEFAULT_CLUSTER_ID),
+}
+
+var CONTENT_TOPICS_DIFFERENT_SHARDS = []string{
+	"/myapp/1/latest/proto",
+	"/waku/2/content/test.js",
+	"/app/22/sometopic/someencoding",
+	"/toychat/2/huilong/proto",
+	"/statusim/1/community/cbor",
+	"/app/27/sometopic/someencoding",
+	"/app/29/sometopic/someencoding",
+	"/app/20/sometopic/someencoding",
 }

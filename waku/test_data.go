@@ -19,13 +19,13 @@ func init() {
 		LogLevel:        "DEBUG",
 		Discv5Discovery: true,
 		ClusterID:       16,
-		Shards:          []uint16{64},
-		PeerExchange:    false,
-		Store:           false,
-		Filter:          false,
-		Lightpush:       false,
-		Discv5UdpPort:   0,
-		TcpPort:         0,
+		//Shards:          []uint16{64},
+		PeerExchange:  false,
+		Store:         false,
+		Filter:        false,
+		Lightpush:     false,
+		Discv5UdpPort: 0,
+		TcpPort:       0,
 	}
 
 	DefaultStoreQueryRequest = common.StoreQueryRequest{
@@ -102,7 +102,7 @@ var PUBSUB_TOPICS_STORE = []string{
 	fmt.Sprintf("/waku/2/rs/%d/5", DEFAULT_CLUSTER_ID),
 	fmt.Sprintf("/waku/2/rs/%d/6", DEFAULT_CLUSTER_ID),
 	fmt.Sprintf("/waku/2/rs/%d/7", DEFAULT_CLUSTER_ID),
-	//fmt.Sprintf("/waku/2/rs/%d/8", DEFAULT_CLUSTER_ID),
+	fmt.Sprintf("/waku/2/rs/%d/8", DEFAULT_CLUSTER_ID),
 }
 
 var CONTENT_TOPICS_DIFFERENT_SHARDS = []string{

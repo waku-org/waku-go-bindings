@@ -2,9 +2,11 @@ package waku
 
 import (
 	"time"
+
+	"github.com/waku-org/waku-go-bindings/waku/common"
 )
 
-var DefaultWakuConfig WakuConfig
+var DefaultWakuConfig common.WakuConfig
 
 func init() {
 

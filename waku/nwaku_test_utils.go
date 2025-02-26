@@ -175,3 +175,43 @@ func (n *WakuNode) VerifyMessageReceived(expectedMessage *pb.WakuMessage, expect
 		return errors.New("timeout: message not received within the given duration")
 	}
 }
+
+func ConnectAllPeers(nodes []*WakuNode) error {
+	if len(nodes) == 0 {
+		Error("Cannot connect peers: node list is empty")
+		return errors.New("node list is empty")
+	}
+
+	timeout := time.Duration(len(nodes)*2) * time.Second
+	Debug("Connecting nodes in a relay chain with timeout: %v", timeout)
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	for i := 0; i < len(nodes)-1; i++ {
+		Debug("Connecting node %d to node %d", i, i+1)
+		err := nodes[i].ConnectPeer(nodes[i+1])
+		if err != nil {
+			Error("Failed to connect node %d to node %d: %v", i, i+1, err)
+			return err
+		}
+	}
+
+	<-ctx.Done()
+	Debug("Connections stabilized")
+	return nil
+}
+
+func SubscribeNodesToTopic(nodes []*WakuNode, topic string) error {
+	for _, node := range nodes {
+		Debug("Subscribing node %s to topic %s", node.nodeName, topic)
+		err := node.RelaySubscribe(topic)
+
+		if err != nil {
+			Error("Failed to subscribe node %s to topic %s: %v", node.nodeName, topic, err)
+			return err
+		}
+		Debug("Node %s successfully subscribed to topic %s", node.nodeName, topic)
+	}
+	return nil
+}

@@ -953,7 +953,7 @@ func (n *WakuNode) RelayPublishNoCTX(pubsubTopic string, message *pb.WakuMessage
 	}
 
 	// Handling context internally with a timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 
 	Debug("Attempting to publish message via relay on node %s", n.nodeName)
@@ -1421,14 +1421,18 @@ func StartWakuNode(nodeName string, customCfg *WakuConfig) (*WakuNode, error) {
 		nodeCfg = *customCfg
 	}
 
-	tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0)
+	tcpPort, udpPort, err := GetFreePortIfNeeded(nodeCfg.TcpPort, nodeCfg.Discv5UdpPort)
 	if err != nil {
 		Error("Failed to allocate unique ports: %v", err)
-		tcpPort, udpPort = 0, 0 // Fallback to OS-assigned ports
+		tcpPort, udpPort = 0, 0
 	}
 
-	nodeCfg.TcpPort = tcpPort
-	nodeCfg.Discv5UdpPort = udpPort
+	if nodeCfg.TcpPort == 0 {
+		nodeCfg.TcpPort = tcpPort
+	}
+	if nodeCfg.Discv5UdpPort == 0 {
+		nodeCfg.Discv5UdpPort = udpPort
+	}
 
 	Debug("Creating %s", nodeName)
 	node, err := NewWakuNode(&nodeCfg, nodeName)
@@ -1448,6 +1452,7 @@ func StartWakuNode(nodeName string, customCfg *WakuConfig) (*WakuNode, error) {
 }
 
 func (n *WakuNode) StopAndDestroy() error {
+	Debug("Stopping and destroying Node")
 	if n == nil {
 		err := errors.New("waku node is nil")
 		Error("Failed to stop and destroy: %v", err)

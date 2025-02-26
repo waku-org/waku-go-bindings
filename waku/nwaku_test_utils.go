@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v3"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/waku-org/go-waku/waku/v2/protocol/pb"
 	"github.com/waku-org/waku-go-bindings/waku/common"
 	"google.golang.org/protobuf/proto"
@@ -214,4 +215,43 @@ func SubscribeNodesToTopic(nodes []*WakuNode, topic string) error {
 		Debug("Node %s successfully subscribed to topic %s", node.nodeName, topic)
 	}
 	return nil
+}
+
+func (n *WakuNode) GetStoredMessages(storeNode *WakuNode, storeRequest *common.StoreQueryRequest) (*common.StoreQueryResponse, error) {
+	Debug("Starting store query request")
+
+	if storeRequest == nil {
+		Debug("Using DefaultStoreQueryRequest")
+		storeRequest = &DefaultStoreQueryRequest
+	}
+
+	storeMultiaddr, err := storeNode.ListenAddresses()
+	if err != nil {
+		Error("Failed to retrieve listen addresses for store node: %v", err)
+		return nil, err
+	}
+
+	if len(storeMultiaddr) == 0 {
+		Error("Store node has no available listen addresses")
+		return nil, fmt.Errorf("store node has no available listen addresses")
+	}
+
+	storeNodeAddrInfo, err := peer.AddrInfoFromString(storeMultiaddr[0].String())
+	if err != nil {
+		Error("Failed to convert store node address to AddrInfo: %v", err)
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	Debug("Querying store node for messages")
+	res, err := n.StoreQuery(ctx, storeRequest, *storeNodeAddrInfo)
+	if err != nil {
+		Error("StoreQuery failed: %v", err)
+		return nil, err
+	}
+
+	Debug("Store query successful, retrieved %d messages", len(*res.Messages))
+	return res, nil
 }

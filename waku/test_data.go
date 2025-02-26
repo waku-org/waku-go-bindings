@@ -10,7 +10,7 @@ var DefaultWakuConfig common.WakuConfig
 
 func init() {
 
-	DefaultWakuConfig = WakuConfig{
+	DefaultWakuConfig = common.WakuConfig{
 		Relay:           false,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: true,

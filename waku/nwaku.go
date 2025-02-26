@@ -617,11 +617,13 @@ func (n *WakuNode) RelaySubscribe(pubsubTopic string) error {
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
+		Debug("Successfully subscribed to relay on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
 		return nil
 	}
 
-	errMsg := "error WakuRelaySubscribe: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
-	return errors.New(errMsg)
+	errMsg := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	Error("Failed to subscribe to relay on node %s, pubsubTopic: %s, error: %v", n.nodeName, pubsubTopic, errMsg)
+	return errors.New("error WakuRelaySubscribe: " + errMsg)
 }
 
 func (n *WakuNode) RelayAddProtectedShard(clusterId uint16, shardId uint16, pubkey *ecdsa.PublicKey) error {
@@ -657,7 +659,9 @@ func (n *WakuNode) RelayAddProtectedShard(clusterId uint16, shardId uint16, pubk
 
 func (n *WakuNode) RelayUnsubscribe(pubsubTopic string) error {
 	if pubsubTopic == "" {
-		return errors.New("pubsub topic is empty")
+		err := errors.New("pubsub topic is empty")
+		Error("Failed to unsubscribe from relay: %v", err)
+		return err
 	}
 
 	wg := sync.WaitGroup{}
@@ -673,15 +677,19 @@ func (n *WakuNode) RelayUnsubscribe(pubsubTopic string) error {
 	}
 
 	wg.Add(1)
+	Debug("Attempting to unsubscribe from relay on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
 	C.cGoWakuRelayUnsubscribe(n.wakuCtx, cPubsubTopic, resp)
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
+
+		Debug("Successfully unsubscribed from relay on node %s, pubsubTopic: %s", n.nodeName, pubsubTopic)
 		return nil
 	}
 
-	errMsg := "error WakuRelayUnsubscribe: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
-	return errors.New(errMsg)
+	errMsg := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	Error("Failed to unsubscribe from relay on node %s, pubsubTopic: %s, error: %v", n.nodeName, pubsubTopic, errMsg)
+	return errors.New("error WakuRelayUnsubscribe: " + errMsg)
 }
 
 func (n *WakuNode) PeerExchangeRequest(numPeers uint64) (uint64, error) {
@@ -697,16 +705,20 @@ func (n *WakuNode) PeerExchangeRequest(numPeers uint64) (uint64, error) {
 		numRecvPeersStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
 		numRecvPeers, err := strconv.ParseUint(numRecvPeersStr, 10, 64)
 		if err != nil {
+			Error("Failed to parse number of received peers: %v", err)
 			return 0, err
 		}
 		return numRecvPeers, nil
 	}
 
 	errMsg := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	Error("PeerExchangeRequest failed: %v", errMsg)
 	return 0, errors.New(errMsg)
 }
 
 func (n *WakuNode) StartDiscV5() error {
+
+	Debug("Starting DiscV5 for node: %s", n.nodeName)
 	wg := sync.WaitGroup{}
 
 	var resp = C.allocResp(unsafe.Pointer(&wg))
@@ -716,9 +728,11 @@ func (n *WakuNode) StartDiscV5() error {
 	C.cGoWakuStartDiscV5(n.wakuCtx, resp)
 	wg.Wait()
 	if C.getRet(resp) == C.RET_OK {
+		Debug("Successfully started DiscV5 for node: %s", n.nodeName)
 		return nil
 	}
 	errMsg := "error WakuStartDiscV5: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	Error("Failed to start DiscV5 for node %s: %v", n.nodeName, errMsg)
 	return errors.New(errMsg)
 }
 
@@ -733,9 +747,11 @@ func (n *WakuNode) StopDiscV5() error {
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
+		Debug("Successfully stopped DiscV5 for node: %s", n.nodeName)
 		return nil
 	}
 	errMsg := "error WakuStopDiscV5: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	Error("Failed to stop DiscV5 for node %s: %v", n.nodeName, errMsg)
 	return errors.New(errMsg)
 }
 
@@ -751,11 +767,13 @@ func (n *WakuNode) Version() (string, error) {
 
 	if C.getRet(resp) == C.RET_OK {
 		var version = C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+		Debug("Successfully fetched Waku version for node %s: %s", n.nodeName, version)
 		return version, nil
 	}
 
 	errMsg := "error WakuVersion: " +
 		C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	Error("Failed to fetch Waku version for node %s: %v", n.nodeName, errMsg)
 	return "", errors.New(errMsg)
 }
 
@@ -830,6 +848,29 @@ func (n *WakuNode) RelayPublish(ctx context.Context, message *pb.WakuMessage, pu
 	}
 	errMsg := "WakuRelayPublish: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
 	return common.MessageHash(""), errors.New(errMsg)
+}
+
+func (n *WakuNode) RelayPublishNoCTX(pubsubTopic string, message *pb.WakuMessage) (common.MessageHash, error) {
+	if n == nil {
+		err := errors.New("cannot publish message; node is nil")
+		Error("Failed to publish message via relay: %v", err)
+		return "", err
+	}
+
+	// Handling context internally with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+
+	Debug("Attempting to publish message via relay on node %s", n.nodeName)
+
+	msgHash, err := n.RelayPublish(ctx, message, pubsubTopic)
+	if err != nil {
+		Error("Failed to publish message via relay on node %s: %v", n.nodeName, err)
+		return "", err
+	}
+
+	Debug("Successfully published message via relay on node %s, messageHash: %s", n.nodeName, msgHash.String())
+	return msgHash, nil
 }
 
 func (n *WakuNode) DnsDiscovery(ctx context.Context, enrTreeUrl string, nameDnsServer string) ([]multiaddr.Multiaddr, error) {
@@ -956,7 +997,7 @@ func (n *WakuNode) Destroy() error {
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
-		Debug("Successfully destroyed " + n.nodeName)
+		Debug("Successfully destroyed %s", n.nodeName)
 		return nil
 	}
 
@@ -1284,6 +1325,19 @@ func StartWakuNode(nodeName string, customCfg *common.WakuConfig) (*WakuNode, er
 		nodeCfg = *customCfg
 	}
 
+	tcpPort, udpPort, err := GetFreePortIfNeeded(nodeCfg.TcpPort, nodeCfg.Discv5UdpPort)
+	if err != nil {
+		Error("Failed to allocate unique ports: %v", err)
+		tcpPort, udpPort = 0, 0
+	}
+
+	if nodeCfg.TcpPort == 0 {
+		nodeCfg.TcpPort = tcpPort
+	}
+	if nodeCfg.Discv5UdpPort == 0 {
+		nodeCfg.Discv5UdpPort = udpPort
+	}
+
 	Debug("Creating %s", nodeName)
 	node, err := NewWakuNode(&nodeCfg, nodeName)
 	if err != nil {
@@ -1302,6 +1356,7 @@ func StartWakuNode(nodeName string, customCfg *common.WakuConfig) (*WakuNode, er
 }
 
 func (n *WakuNode) StopAndDestroy() error {
+	Debug("Stopping and destroying Node")
 	if n == nil {
 		err := errors.New("waku node is nil")
 		Error("Failed to stop and destroy: %v", err)

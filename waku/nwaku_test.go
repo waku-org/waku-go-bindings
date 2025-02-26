@@ -37,7 +37,7 @@ func TestBasicWaku(t *testing.T) {
 
 	// ctx := context.Background()
 
-	nwakuConfig := common.WakuConfig{
+	nwakuConfig := WakuConfig{
 		Nodekey:         "11d0dcea28e86f81937a3bd1163473c7fbc0a0db54fd72914849bc47bdf78710",
 		Relay:           true,
 		LogLevel:        "DEBUG",
@@ -190,7 +190,7 @@ func TestPeerExchange(t *testing.T) {
 	tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0)
 	require.NoError(t, err)
 	// start node that will be discovered by PeerExchange
-	discV5NodeWakuConfig := common.WakuConfig{
+	discV5NodeWakuConfig := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: true,
@@ -215,7 +215,7 @@ func TestPeerExchange(t *testing.T) {
 	require.NoError(t, err)
 
 	// start node which serves as PeerExchange server
-	pxServerWakuConfig := common.WakuConfig{
+	pxServerWakuConfig := WakuConfig{
 		Relay:                true,
 		LogLevel:             "DEBUG",
 		Discv5Discovery:      true,
@@ -264,7 +264,7 @@ func TestPeerExchange(t *testing.T) {
 	require.NoError(t, err)
 
 	// start light node which uses PeerExchange to discover peers
-	pxClientWakuConfig := common.WakuConfig{
+	pxClientWakuConfig := WakuConfig{
 		Relay:            false,
 		LogLevel:         "DEBUG",
 		Discv5Discovery:  false,
@@ -324,7 +324,7 @@ func TestDnsDiscover(t *testing.T) {
 	require.NoError(t, err)
 
 	nameserver := "8.8.8.8"
-	nodeWakuConfig := common.WakuConfig{
+	nodeWakuConfig := WakuConfig{
 		Relay:         true,
 		LogLevel:      "DEBUG",
 		ClusterID:     16,
@@ -353,7 +353,7 @@ func TestDial(t *testing.T) {
 	require.NoError(t, err)
 
 	// start node that will initiate the dial
-	dialerNodeWakuConfig := common.WakuConfig{
+	dialerNodeWakuConfig := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
@@ -371,7 +371,7 @@ func TestDial(t *testing.T) {
 	require.NoError(t, err)
 
 	// start node that will receive the dial
-	receiverNodeWakuConfig := common.WakuConfig{
+	receiverNodeWakuConfig := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
@@ -418,7 +418,7 @@ func TestRelay(t *testing.T) {
 	require.NoError(t, err)
 
 	// start node that will send the message
-	senderNodeWakuConfig := common.WakuConfig{
+	senderNodeWakuConfig := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
@@ -436,7 +436,7 @@ func TestRelay(t *testing.T) {
 	require.NoError(t, err)
 
 	// start node that will receive the message
-	receiverNodeWakuConfig := common.WakuConfig{
+	receiverNodeWakuConfig := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
@@ -502,7 +502,7 @@ func TestTopicHealth(t *testing.T) {
 	require.NoError(t, err)
 
 	// start node1
-	wakuConfig1 := common.WakuConfig{
+	wakuConfig1 := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
@@ -520,7 +520,7 @@ func TestTopicHealth(t *testing.T) {
 	require.NoError(t, err)
 
 	// start node2
-	wakuConfig2 := common.WakuConfig{
+	wakuConfig2 := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
@@ -575,7 +575,7 @@ func TestConnectionChange(t *testing.T) {
 	require.NoError(t, err)
 
 	// start node1
-	wakuConfig1 := common.WakuConfig{
+	wakuConfig1 := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
@@ -593,7 +593,7 @@ func TestConnectionChange(t *testing.T) {
 	require.NoError(t, err)
 
 	// start node2
-	wakuConfig2 := common.WakuConfig{
+	wakuConfig2 := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
@@ -662,7 +662,7 @@ func TestStore(t *testing.T) {
 	require.NoError(t, err)
 
 	// start node that will send the message
-	senderNodeWakuConfig := common.WakuConfig{
+	senderNodeWakuConfig := WakuConfig{
 		Relay:           true,
 		Store:           true,
 		LogLevel:        "DEBUG",
@@ -682,7 +682,7 @@ func TestStore(t *testing.T) {
 	require.NoError(t, err)
 
 	// start node that will receive the message
-	receiverNodeWakuConfig := common.WakuConfig{
+	receiverNodeWakuConfig := WakuConfig{
 		Relay:           true,
 		Store:           true,
 		LogLevel:        "DEBUG",
@@ -845,7 +845,7 @@ func TestParallelPings(t *testing.T) {
 	require.NoError(t, err)
 
 	// start node that will initiate the dial
-	dialerNodeWakuConfig := common.WakuConfig{
+	dialerNodeWakuConfig := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
@@ -862,7 +862,7 @@ func TestParallelPings(t *testing.T) {
 	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0)
 	require.NoError(t, err)
 
-	receiverNodeWakuConfig1 := common.WakuConfig{
+	receiverNodeWakuConfig1 := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
@@ -883,7 +883,7 @@ func TestParallelPings(t *testing.T) {
 	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0)
 	require.NoError(t, err)
 
-	receiverNodeWakuConfig2 := common.WakuConfig{
+	receiverNodeWakuConfig2 := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,
@@ -904,7 +904,7 @@ func TestParallelPings(t *testing.T) {
 	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0)
 	require.NoError(t, err)
 
-	receiverNodeWakuConfig3 := common.WakuConfig{
+	receiverNodeWakuConfig3 := WakuConfig{
 		Relay:           true,
 		LogLevel:        "DEBUG",
 		Discv5Discovery: false,

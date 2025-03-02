@@ -95,7 +95,7 @@ func (n *WakuNode) CreateMessage(customMessage ...*pb.WakuMessage) *pb.WakuMessa
 	Debug("Using default message format on node %s", n.nodeName)
 	defaultMessage := &pb.WakuMessage{
 		Payload:      []byte("This is a default Waku message payload"),
-		ContentTopic: "test-content-topic",
+		ContentTopic: DefaultContentTopic,
 		Version:      proto.Uint32(0),
 		Timestamp:    proto.Int64(time.Now().UnixNano()),
 	}

@@ -19,13 +19,13 @@ func init() {
 		LogLevel:        "DEBUG",
 		Discv5Discovery: true,
 		ClusterID:       16,
-		//Shards:          []uint16{64},
-		PeerExchange:  false,
-		Store:         false,
-		Filter:        false,
-		Lightpush:     false,
-		Discv5UdpPort: 0,
-		TcpPort:       0,
+		Shards:          []uint16{64},
+		PeerExchange:    false,
+		Store:           false,
+		Filter:          false,
+		Lightpush:       false,
+		Discv5UdpPort:   0,
+		TcpPort:         0,
 	}
 
 	DefaultStoreQueryRequest = common.StoreQueryRequest{
@@ -41,6 +41,7 @@ const ConnectPeerTimeout = 10 * time.Second //default timeout for node to connec
 const DefaultTimeOut = 3 * time.Second
 
 var DefaultPubsubTopic = "/waku/2/rs/16/64"
+var DefaultContentTopic = "/test/1/default/proto"
 var (
 	MinPort = 1024  // Minimum allowable port (exported)
 	MaxPort = 65535 // Maximum allowable port (exported)

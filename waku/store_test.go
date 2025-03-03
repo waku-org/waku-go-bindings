@@ -1167,12 +1167,12 @@ func TestStoredDublicateMessage(t *testing.T) {
 	require.NoError(t, err, "Failed to connect Node2 to Node1")
 
 	queryTimestamp := proto.Int64(time.Now().UnixNano())
-
+	var msg = node1.CreateMessage()
 	Debug("Node1 is publishing two identical messages")
-	_, err = node1.RelayPublishNoCTX(DefaultPubsubTopic, node1.CreateMessage())
+	_, err = node1.RelayPublishNoCTX(DefaultPubsubTopic, msg)
 	require.NoError(t, err, "Failed to publish first message")
 
-	_, err = node1.RelayPublishNoCTX(DefaultPubsubTopic, node1.CreateMessage())
+	_, err = node2.RelayPublishNoCTX(DefaultPubsubTopic, msg)
 	require.NoError(t, err, "Failed to publish second message")
 
 	Debug("Querying stored messages from Node2 using Node1")

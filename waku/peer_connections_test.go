@@ -216,6 +216,33 @@ func TestDiscv5PeerMeshCount(t *testing.T) {
 	Debug("Test successfully verified peer count change after stopping Node3")
 }
 
+func TestStartDiscv5(t *testing.T) {
+	node1Config := DefaultWakuConfig
+	node1Config.Relay = true
+	Debug("Creating Node1")
+	node1, err := StartWakuNode("Node1", &node1Config)
+	require.NoError(t, err, "Failed to start Node1")
+
+	enrNode1, err := node1.ENR()
+	require.NoError(t, err, "Failed to get ENR for Node1")
+
+	node2Config := DefaultWakuConfig
+	node2Config.Discv5Discovery = false
+	node2Config.Discv5BootstrapNodes = []string{enrNode1.String()}
+	node2Config.Relay = true
+	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
+	node2, err := StartWakuNode("Node2", &node2Config)
+	require.NoError(t, err, "Failed to start Node2")
+
+	defer func() {
+		Debug("Stopping and destroying all Waku nodes")
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+	}()
+
+	node2.StartDiscV5()
+}
+
 // this test commented as it will fail will be changed to have external ip in future task
 /*
 func TestDiscv5GetPeersConnected(t *testing.T) {

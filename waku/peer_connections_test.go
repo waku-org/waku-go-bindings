@@ -264,23 +264,23 @@ func TestDiscv5DisabledNoPeersConnected(t *testing.T) {
 
 	Debug("Verifying number of peers connected to Nodes")
 	peerCount, err := node1.GetNumConnectedPeers()
-	Debug("Total number of connected peers for Node1: %d", peerCount)
 	require.NoError(t, err, "Failed to get number of peers in mesh for Node1")
+	Debug("Total number of connected peers for Node1: %d", peerCount)
 	require.Equal(t, 0, peerCount, "Expected Node1 to have exactly 0 peers in the mesh")
 
 	peerCount, err = node2.GetNumConnectedPeers()
-	Debug("Total number of connected peers for Node2: %d", peerCount)
 	require.NoError(t, err, "Failed to get number of peers in mesh for Node2")
+	Debug("Total number of connected peers for Node2: %d", peerCount)
 	require.Equal(t, 0, peerCount, "Expected Node2 to have exactly 0 peers in the mesh")
 
 	peerCount, err = node3.GetNumConnectedPeers()
-	Debug("Total number of connected peers for Node3: %d", peerCount)
 	require.NoError(t, err, "Failed to get number of peers in mesh for Node3")
+	Debug("Total number of connected peers for Node3: %d", peerCount)
 	require.Equal(t, 0, peerCount, "Expected Node3 to have exactly 0 peers in the mesh")
 
 	peerCount, err = node4.GetNumConnectedPeers()
-	Debug("Total number of connected peers for Node4: %d", peerCount)
 	require.NoError(t, err, "Failed to get number of peers in mesh for Node4")
+	Debug("Total number of connected peers for Node4: %d", peerCount)
 	require.Equal(t, 0, peerCount, "Expected Node4 to have exactly 0 peers in the mesh")
 
 	Debug("Test passed: all the nodes have 0 peers")

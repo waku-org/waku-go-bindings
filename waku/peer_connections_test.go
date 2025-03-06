@@ -91,6 +91,8 @@ func TestConnectMultipleNodesToSingleNode(t *testing.T) {
 }
 
 func TestConnectUsingMultipleStaticPeers(t *testing.T) {
+	Debug("Starting TestConnectUsingMultipleStaticPeers")
+
 	node1, err := StartWakuNode("node1", nil)
 	require.NoError(t, err, "Failed to start Node 1")
 	defer func() {
@@ -146,6 +148,8 @@ func TestConnectUsingMultipleStaticPeers(t *testing.T) {
 	require.True(t, slices.Contains(connectedPeers, node1PeerID), "Node 1 should be a peer of Node 4")
 	require.True(t, slices.Contains(connectedPeers, node2PeerID), "Node 2 should be a peer of Node 4")
 	require.True(t, slices.Contains(connectedPeers, node3PeerID), "Node 3 should be a peer of Node 4")
+
+	Debug("Test passed: multiple nodes connected to a single node using Static Peers")
 }
 
 func TestDiscv5PeerMeshCount(t *testing.T) {
@@ -217,6 +221,8 @@ func TestDiscv5PeerMeshCount(t *testing.T) {
 }
 
 func TestDiscv5DisabledNoPeersConnected(t *testing.T) {
+	Debug("Starting TestDiscv5DisabledNoPeersConnected")
+
 	nodeConfig := DefaultWakuConfig
 	nodeConfig.Discv5Discovery = false
 	nodeConfig.Relay = true
@@ -254,24 +260,30 @@ func TestDiscv5DisabledNoPeersConnected(t *testing.T) {
 	defer node4.StopAndDestroy()
 
 	Debug("Waiting to ensure no auto-connection")
-	time.Sleep(5 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	Debug("Verifying number of peers connected to Nodes")
 	peerCount, err := node1.GetNumConnectedPeers()
+	Debug("Total number of connected peers for Node1: %d", peerCount)
 	require.NoError(t, err, "Failed to get number of peers in mesh for Node1")
 	require.Equal(t, 0, peerCount, "Expected Node1 to have exactly 0 peers in the mesh")
 
 	peerCount, err = node2.GetNumConnectedPeers()
+	Debug("Total number of connected peers for Node2: %d", peerCount)
 	require.NoError(t, err, "Failed to get number of peers in mesh for Node2")
 	require.Equal(t, 0, peerCount, "Expected Node2 to have exactly 0 peers in the mesh")
 
 	peerCount, err = node3.GetNumConnectedPeers()
+	Debug("Total number of connected peers for Node3: %d", peerCount)
 	require.NoError(t, err, "Failed to get number of peers in mesh for Node3")
 	require.Equal(t, 0, peerCount, "Expected Node3 to have exactly 0 peers in the mesh")
 
 	peerCount, err = node4.GetNumConnectedPeers()
+	Debug("Total number of connected peers for Node4: %d", peerCount)
 	require.NoError(t, err, "Failed to get number of peers in mesh for Node4")
 	require.Equal(t, 0, peerCount, "Expected Node4 to have exactly 0 peers in the mesh")
+
+	Debug("Test passed: all the nodes have 0 peers")
 }
 
 // this test commented as it will fail will be changed to have external ip in future task

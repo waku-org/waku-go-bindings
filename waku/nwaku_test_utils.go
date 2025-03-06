@@ -233,7 +233,7 @@ func (n *WakuNode) GetStoredMessages(storeNode *WakuNode, storeRequest *common.S
 
 	if len(storeMultiaddr) == 0 {
 		Error("Store node has no available listen addresses")
-		return nil, fmt.Errorf("store node has no available listen addresses")
+		return nil, errors.New("store node has no available listen addresses")
 	}
 
 	storeNodeAddrInfo, err := peer.AddrInfoFromString(storeMultiaddr[0].String())

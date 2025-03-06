@@ -216,51 +216,63 @@ func TestDiscv5PeerMeshCount(t *testing.T) {
 	Debug("Test successfully verified peer count change after stopping Node3")
 }
 
-// func TestStartDiscv5(t *testing.T) {
-// 	node1Config := DefaultWakuConfig
-// 	node1Config.Relay = true
-// 	Debug("Creating Node1")
-// 	node1, err := StartWakuNode("Node1", &node1Config)
-// 	require.NoError(t, err, "Failed to start Node1")
+func TestDiscv5DisabledNoPeersConnected(t *testing.T) {
+	nodeConfig := DefaultWakuConfig
+	nodeConfig.Discv5Discovery = false
+	nodeConfig.Relay = true
 
-// 	enrNode1, err := node1.ENR()
-// 	require.NoError(t, err, "Failed to get ENR for Node1")
+	Debug("Creating Node1")
+	node1, err := StartWakuNode("Node1", &nodeConfig)
+	require.NoError(t, err, "Failed to start Node1")
+	defer node1.StopAndDestroy()
 
-// 	node2Config := DefaultWakuConfig
-// 	node2Config.Discv5Discovery = false
-// 	node2Config.Discv5BootstrapNodes = []string{enrNode1.String()}
-// 	node2Config.Relay = true
-// 	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
-// 	node2, err := StartWakuNode("Node2", &node2Config)
-// 	require.NoError(t, err, "Failed to start Node2")
+	enrNode1, err := node1.ENR()
+	require.NoError(t, err, "Failed to get ENR for Node1")
+	nodeConfig.Discv5BootstrapNodes = []string{enrNode1.String()}
 
-// 	defer func() {
-// 		Debug("Stopping and destroying all Waku nodes")
-// 		node1.StopAndDestroy()
-// 		node2.StopAndDestroy()
-// 	}()
+	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
+	node2, err := StartWakuNode("Node2", &nodeConfig)
+	require.NoError(t, err, "Failed to start Node2")
+	defer node2.StopAndDestroy()
 
-// 	err = node2.StartDiscV5()
-// 	require.NoError(t, err, "Failed to start Discv5 service in Node2")
+	enrNode2, err := node2.ENR()
+	require.NoError(t, err, "Failed to get ENR for Node2")
+	nodeConfig.Discv5BootstrapNodes = []string{enrNode2.String()}
 
-// 	defaultPubsubTopic := DefaultPubsubTopic
-// 	err = SubscribeNodesToTopic([]*WakuNode{node1, node2}, defaultPubsubTopic)
-// 	require.NoError(t, err, "Failed to subscribe all nodes to the topic")
+	Debug("Creating Node3 with Node2 as Discv5 bootstrap")
+	node3, err := StartWakuNode("Node3", &nodeConfig)
+	require.NoError(t, err, "Failed to start Node3")
+	defer node3.StopAndDestroy()
 
-// 	Debug("Waiting for nodes to auto-connect via Discv5")
-// 	err = WaitForAutoConnection([]*WakuNode{node1, node2})
-// 	require.NoError(t, err, "Nodes did not auto-connect within timeout")
+	enrNode3, err := node3.ENR()
+	require.NoError(t, err, "Failed to get ENR for Node3")
+	nodeConfig.Discv5BootstrapNodes = []string{enrNode3.String()}
 
-// 	Debug("Fetching number of peers in mesh for Node1")
-// 	peerCountBefore, err := node1.GetNumPeersInMesh(defaultPubsubTopic)
-// 	require.NoError(t, err, "Failed to get number of peers in mesh for Node1")
+	Debug("Creating Node4 with Node3 as Discv5 bootstrap")
+	node4, err := StartWakuNode("Node4", &nodeConfig)
+	require.NoError(t, err, "Failed to start Node4")
+	defer node4.StopAndDestroy()
 
-// 	Debug("Total number of peers in mesh for Node1: %d", peerCountBefore)
-// 	require.Equal(t, 1, peerCountBefore, "Expected Node1 to have exactly 1 peer")
+	Debug("Waiting to ensure no auto-connection")
+	time.Sleep(5 * time.Second)
 
-// 	err = node2.StopDiscV5()
-// 	require.NoError(t, err, "Failed to stop Discv5 service in Node2")
-// }
+	Debug("Verifying number of peers connected to Nodes")
+	peerCount, err := node1.GetNumConnectedPeers()
+	require.NoError(t, err, "Failed to get number of peers in mesh for Node1")
+	require.Equal(t, 0, peerCount, "Expected Node1 to have exactly 0 peers in the mesh")
+
+	peerCount, err = node2.GetNumConnectedPeers()
+	require.NoError(t, err, "Failed to get number of peers in mesh for Node2")
+	require.Equal(t, 0, peerCount, "Expected Node2 to have exactly 0 peers in the mesh")
+
+	peerCount, err = node3.GetNumConnectedPeers()
+	require.NoError(t, err, "Failed to get number of peers in mesh for Node3")
+	require.Equal(t, 0, peerCount, "Expected Node3 to have exactly 0 peers in the mesh")
+
+	peerCount, err = node4.GetNumConnectedPeers()
+	require.NoError(t, err, "Failed to get number of peers in mesh for Node4")
+	require.Equal(t, 0, peerCount, "Expected Node4 to have exactly 0 peers in the mesh")
+}
 
 // this test commented as it will fail will be changed to have external ip in future task
 /*

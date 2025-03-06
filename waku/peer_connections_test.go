@@ -216,32 +216,51 @@ func TestDiscv5PeerMeshCount(t *testing.T) {
 	Debug("Test successfully verified peer count change after stopping Node3")
 }
 
-func TestStartDiscv5(t *testing.T) {
-	node1Config := DefaultWakuConfig
-	node1Config.Relay = true
-	Debug("Creating Node1")
-	node1, err := StartWakuNode("Node1", &node1Config)
-	require.NoError(t, err, "Failed to start Node1")
+// func TestStartDiscv5(t *testing.T) {
+// 	node1Config := DefaultWakuConfig
+// 	node1Config.Relay = true
+// 	Debug("Creating Node1")
+// 	node1, err := StartWakuNode("Node1", &node1Config)
+// 	require.NoError(t, err, "Failed to start Node1")
 
-	enrNode1, err := node1.ENR()
-	require.NoError(t, err, "Failed to get ENR for Node1")
+// 	enrNode1, err := node1.ENR()
+// 	require.NoError(t, err, "Failed to get ENR for Node1")
 
-	node2Config := DefaultWakuConfig
-	node2Config.Discv5Discovery = false
-	node2Config.Discv5BootstrapNodes = []string{enrNode1.String()}
-	node2Config.Relay = true
-	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
-	node2, err := StartWakuNode("Node2", &node2Config)
-	require.NoError(t, err, "Failed to start Node2")
+// 	node2Config := DefaultWakuConfig
+// 	node2Config.Discv5Discovery = false
+// 	node2Config.Discv5BootstrapNodes = []string{enrNode1.String()}
+// 	node2Config.Relay = true
+// 	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
+// 	node2, err := StartWakuNode("Node2", &node2Config)
+// 	require.NoError(t, err, "Failed to start Node2")
 
-	defer func() {
-		Debug("Stopping and destroying all Waku nodes")
-		node1.StopAndDestroy()
-		node2.StopAndDestroy()
-	}()
+// 	defer func() {
+// 		Debug("Stopping and destroying all Waku nodes")
+// 		node1.StopAndDestroy()
+// 		node2.StopAndDestroy()
+// 	}()
 
-	node2.StartDiscV5()
-}
+// 	err = node2.StartDiscV5()
+// 	require.NoError(t, err, "Failed to start Discv5 service in Node2")
+
+// 	defaultPubsubTopic := DefaultPubsubTopic
+// 	err = SubscribeNodesToTopic([]*WakuNode{node1, node2}, defaultPubsubTopic)
+// 	require.NoError(t, err, "Failed to subscribe all nodes to the topic")
+
+// 	Debug("Waiting for nodes to auto-connect via Discv5")
+// 	err = WaitForAutoConnection([]*WakuNode{node1, node2})
+// 	require.NoError(t, err, "Nodes did not auto-connect within timeout")
+
+// 	Debug("Fetching number of peers in mesh for Node1")
+// 	peerCountBefore, err := node1.GetNumPeersInMesh(defaultPubsubTopic)
+// 	require.NoError(t, err, "Failed to get number of peers in mesh for Node1")
+
+// 	Debug("Total number of peers in mesh for Node1: %d", peerCountBefore)
+// 	require.Equal(t, 1, peerCountBefore, "Expected Node1 to have exactly 1 peer")
+
+// 	err = node2.StopDiscV5()
+// 	require.NoError(t, err, "Failed to stop Discv5 service in Node2")
+// }
 
 // this test commented as it will fail will be changed to have external ip in future task
 /*

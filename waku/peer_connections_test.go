@@ -90,6 +90,64 @@ func TestConnectMultipleNodesToSingleNode(t *testing.T) {
 	Debug("Test completed successfully: multiple nodes connected to a single node and verified peers")
 }
 
+func TestConnectUsingMultipleStaticPeers(t *testing.T) {
+	node1, err := StartWakuNode("node1", nil)
+	require.NoError(t, err, "Failed to start Node 1")
+	defer func() {
+		Debug("Stopping and destroying Node 1")
+		node1.StopAndDestroy()
+	}()
+
+	node2, err := StartWakuNode("node2", nil)
+	require.NoError(t, err, "Failed to start Node 2")
+	defer func() {
+		Debug("Stopping and destroying Node 2")
+		node2.StopAndDestroy()
+	}()
+
+	node3, err := StartWakuNode("node3", nil)
+	require.NoError(t, err, "Failed to start Node 3")
+	defer func() {
+		Debug("Stopping and destroying Node 3")
+		node3.StopAndDestroy()
+	}()
+
+	addr1, err := node1.ListenAddresses()
+	require.NoError(t, err, "Failed to get listen addresses for Node 1")
+
+	addr2, err := node2.ListenAddresses()
+	require.NoError(t, err, "Failed to get listen addresses for Node 2")
+
+	addr3, err := node3.ListenAddresses()
+	require.NoError(t, err, "Failed to get listen addresses for Node 3")
+
+	node4Config := DefaultWakuConfig
+	node4Config.Discv5Discovery = false
+	node4Config.Staticnodes = []string{addr1[0].String(), addr2[0].String(), addr3[0].String()}
+
+	node4, err := StartWakuNode("node4", &node4Config)
+	require.NoError(t, err, "Failed to start Node 4")
+	defer func() {
+		Debug("Stopping and destroying Node 4")
+		node4.StopAndDestroy()
+	}()
+
+	Debug("Verifying connected peers for Node 4")
+	connectedPeers, err := node4.GetConnectedPeers()
+	require.NoError(t, err, "Failed to get connected peers for Node 4")
+
+	node1PeerID, err := node1.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 1")
+	node2PeerID, err := node2.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 2")
+	node3PeerID, err := node3.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 3")
+
+	require.True(t, slices.Contains(connectedPeers, node1PeerID), "Node 1 should be a peer of Node 4")
+	require.True(t, slices.Contains(connectedPeers, node2PeerID), "Node 2 should be a peer of Node 4")
+	require.True(t, slices.Contains(connectedPeers, node3PeerID), "Node 3 should be a peer of Node 4")
+}
+
 func TestDiscv5PeerMeshCount(t *testing.T) {
 	Debug("Starting test to verify peer count in mesh using Discv5 after topic subscription")
 
@@ -158,7 +216,7 @@ func TestDiscv5PeerMeshCount(t *testing.T) {
 	Debug("Test successfully verified peer count change after stopping Node3")
 }
 
-// this test commented as it will fail will be changed to have external ip in future task 
+// this test commented as it will fail will be changed to have external ip in future task
 /*
 func TestDiscv5GetPeersConnected(t *testing.T) {
 	Debug("Starting test to verify peer count in mesh with 4 nodes using Discv5 (Chained Connection)")

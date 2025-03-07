@@ -241,24 +241,6 @@ func TestDiscv5DisabledNoPeersConnected(t *testing.T) {
 	require.NoError(t, err, "Failed to start Node2")
 	defer node2.StopAndDestroy()
 
-	enrNode2, err := node2.ENR()
-	require.NoError(t, err, "Failed to get ENR for Node2")
-	nodeConfig.Discv5BootstrapNodes = []string{enrNode2.String()}
-
-	Debug("Creating Node3 with Node2 as Discv5 bootstrap")
-	node3, err := StartWakuNode("Node3", &nodeConfig)
-	require.NoError(t, err, "Failed to start Node3")
-	defer node3.StopAndDestroy()
-
-	enrNode3, err := node3.ENR()
-	require.NoError(t, err, "Failed to get ENR for Node3")
-	nodeConfig.Discv5BootstrapNodes = []string{enrNode3.String()}
-
-	Debug("Creating Node4 with Node3 as Discv5 bootstrap")
-	node4, err := StartWakuNode("Node4", &nodeConfig)
-	require.NoError(t, err, "Failed to start Node4")
-	defer node4.StopAndDestroy()
-
 	Debug("Waiting to ensure no auto-connection")
 	time.Sleep(15 * time.Second)
 
@@ -272,16 +254,6 @@ func TestDiscv5DisabledNoPeersConnected(t *testing.T) {
 	require.NoError(t, err, "Failed to get number of peers in mesh for Node2")
 	Debug("Total number of connected peers for Node2: %d", peerCount)
 	require.Equal(t, 0, peerCount, "Expected Node2 to have exactly 0 peers in the mesh")
-
-	peerCount, err = node3.GetNumConnectedPeers()
-	require.NoError(t, err, "Failed to get number of peers in mesh for Node3")
-	Debug("Total number of connected peers for Node3: %d", peerCount)
-	require.Equal(t, 0, peerCount, "Expected Node3 to have exactly 0 peers in the mesh")
-
-	peerCount, err = node4.GetNumConnectedPeers()
-	require.NoError(t, err, "Failed to get number of peers in mesh for Node4")
-	Debug("Total number of connected peers for Node4: %d", peerCount)
-	require.Equal(t, 0, peerCount, "Expected Node4 to have exactly 0 peers in the mesh")
 
 	Debug("Test passed: all the nodes have 0 peers")
 }

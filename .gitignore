@@ -23,3 +23,9 @@ go.work
 # Generated dependencies and cache
 third_party
 nimcache
+
+waku/store.sqlite3
+
+waku/store.sqlite3-shm
+
+waku/store.sqlite3-wal

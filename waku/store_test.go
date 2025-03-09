@@ -148,7 +148,7 @@ func TestStoreQueryMultipleMessages(t *testing.T) {
 	}
 
 	Debug("Waiting for message delivery to Node2")
-	time.Sleep(5 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	Debug("Node3 querying stored messages from Node2")
 	res, err := node3.GetStoredMessages(node2, nil)
@@ -230,7 +230,7 @@ func TestStoreQueryWith5Pagination(t *testing.T) {
 	}
 
 	Debug("Waiting for message delivery to Node2")
-	time.Sleep(5 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	Debug("Node3 querying stored messages from Node2 with PaginationLimit = 5")
 	storeRequest := common.StoreQueryRequest{
@@ -313,7 +313,7 @@ func TestStoreQueryWithPaginationMultiplePages(t *testing.T) {
 	}
 
 	Debug("Waiting for message delivery to Node2")
-	time.Sleep(5 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	Debug("Node3 querying first page of stored messages from Node2")
 	storeRequest1 := common.StoreQueryRequest{
@@ -419,7 +419,7 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 	}
 
 	Debug("Waiting for message delivery to Node2")
-	time.Sleep(5 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	Debug("Node3 querying first page of stored messages from Node2 (Newest first)")
 	storeRequest1 := common.StoreQueryRequest{
@@ -463,7 +463,7 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 	Debug("Test successfully verified store query pagination in reverse order")
 }
 
-func TestQueryFailwhenNoStorePeer(t *testing.T) {
+func TestQueryFailWhenNoStorePeer(t *testing.T) {
 	Debug("Starting test to verify store query failure when node2 has no store")
 
 	node1Config := DefaultWakuConfig
@@ -633,10 +633,6 @@ func TestStoreQueryWithoutData(t *testing.T) {
 	storedmsgs, err := node3.GetStoredMessages(node2, storeQueryRequest)
 	require.NoError(t, err, "Failed to query store messages from Node2")
 	require.NotNil(t, storedmsgs.Messages, "Expected store response to contain message hashes")
-	//require.Len(t, *storedmsgs.Messages, 1, "Expected exactly one stored message")
-
-	// Access the first message
-	//	firstMessage := (*storedmsgs.Messages)[0]
 
 	firstMessage := (*storedmsgs.Messages)[0]
 	require.Nil(t, firstMessage.WakuMessage, "Expected message payload to be empty when IncludeData is false")
@@ -702,9 +698,7 @@ func TestStoreQueryWithWrongContentTopic(t *testing.T) {
 	}
 
 	storedmsgs, _ := node3.GetStoredMessages(node2, storeQueryRequest)
-	//require.Error(t, err, "Expected error when querying with an incorrect content topic and old timestamp")
 	require.Nil(t, (*storedmsgs.Messages)[0], "Expected no messages to be returned for incorrect content topic and timestamp")
-	//Debug("Queried message hash: %s", (*storedmsgs.Messages)[0].MessageHash)
 	Debug("Test successfully verified that store query fails when using an incorrect content topic and an old timestamp")
 }
 
@@ -1138,7 +1132,7 @@ func TestStoredMessagesWithVersionField(t *testing.T) {
 	Debug("Test finished successfully ")
 }
 
-func TestStoredDublicateMessage(t *testing.T) {
+func TestStoredDuplicateMessage(t *testing.T) {
 	Debug("Starting test")
 
 	node1Config := DefaultWakuConfig

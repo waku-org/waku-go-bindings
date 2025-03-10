@@ -20,9 +20,14 @@ Follow these steps to install and set up the module:
    ```
    cd $(go list -m -f '{{.Dir}}' github.com/waku-org/waku-go-bindings)
    ```
-4. Build the dependencies:
+4. Prepare third_party directory and clone nwaku
    ```
-   sudo make -C waku
+   sudo mkdir third_party
+   sudo chown $USER third_party
+   ```
+5. Build the dependencies:
+   ```
+   make -C waku
    ```
 
 Now the module is ready for use in your project.

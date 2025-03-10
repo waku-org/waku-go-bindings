@@ -25,7 +25,7 @@ Follow these steps to install and set up the module:
    sudo mkdir third_party
    chown $USER:$USER third_party
    ```
-4. Build the dependencies:
+5. Build the dependencies:
    ```
    make -C waku
    ```

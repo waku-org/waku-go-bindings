@@ -23,7 +23,7 @@ Follow these steps to install and set up the module:
 4. Prepare third_party directory and clone nwaku
    ```
    sudo mkdir third_party
-   chown $USER:$USER third_party
+   sudo chown $USER third_party
    ```
 5. Build the dependencies:
    ```

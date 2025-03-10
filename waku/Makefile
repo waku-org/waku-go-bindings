@@ -12,6 +12,9 @@ all: build
 
 # Prepare third_party directory and clone nwaku
 prepare:
+	@echo "Creating third_party directory..."
+	@mkdir -p $(THIRD_PARTY_DIR)
+
 	@echo "Cloning nwaku repository..."
 	@if [ ! -d "$(NWAKU_DIR)" ]; then \
 		cd $(THIRD_PARTY_DIR) && \

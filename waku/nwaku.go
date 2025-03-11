@@ -997,6 +997,7 @@ func (n *WakuNode) Destroy() error {
 	wg.Wait()
 
 	if C.getRet(resp) == C.RET_OK {
+		unregisterNode(n)
 		Debug("Successfully destroyed %s", n.nodeName)
 		return nil
 	}

@@ -16,7 +16,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v3
         with:
-          # Tells GitHub to also clone submodules recursively
           submodules: true
 
       - name: Initialize & update submodules

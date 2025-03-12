@@ -98,112 +98,57 @@ func Test5Nodes1kTearDown(t *testing.T) {
 	require.NoError(t, err)
 	Debug("[%s] OS-level RSS at test START: %d KB", t.Name(), initialRSS)
 
-	//totalIterations := 3
-	//for i := 1; i <= totalIterations; i++ {
-	var nodes []*WakuNode
-	cfg1 := DefaultWakuConfig
-	cfg1.Relay = true
-	node, err := StartWakuNode("node1", &cfg1)
-	require.NoError(t, err, "Failed to start node%d", 0)
-	nodes = append(nodes, node)
-	cfg2 := DefaultWakuConfig
-	cfg2.Relay = true
-	node2, err := StartWakuNode("node2", &cfg2)
-	require.NoError(t, err, "Failed to start node%d", 1)
-	nodes = append(nodes, node2)
-	time.Sleep(5 * time.Second)
-
-	err = node.ConnectPeer(node2)
-	require.NoError(t, err)
-	err = WaitForAutoConnection(nodes)
-	require.NoError(t, err)
-	message := node.CreateMessage()
-	msgHash, err := node.RelayPublishNoCTX(DefaultPubsubTopic, message)
-	require.NoError(t, err)
-	time.Sleep(5 * time.Second)
-	err = node2.VerifyMessageReceived(message, msgHash)
-	require.NoError(t, err, "Node5 did not receive message from node1 at iteration %d", 0)
-
-	//node.StopAndDestroy()
-	//node2.StopAndDestroy()
-	//time.Sleep(20 * time.Second)
-	cfg3 := DefaultWakuConfig
-	cfg3.Relay = true
-	node3, err := StartWakuNode("node1", &cfg3)
-	require.NoError(t, err, "Failed to start node%d", 0)
-
-	cfg4 := DefaultWakuConfig
-	cfg4.Relay = true
-	node4, err := StartWakuNode("node2", &cfg4)
-	require.NoError(t, err, "Failed to start node%d", 1)
-	//nodes = append(nodes, node2)
-	time.Sleep(5 * time.Second)
-
-	err = node3.ConnectPeer(node4)
-	require.NoError(t, err)
-	time.Sleep(5 * time.Second)
-	require.NoError(t, err)
-	message2 := node3.CreateMessage()
-	msgHash2, err := node3.RelayPublishNoCTX(DefaultPubsubTopic, message2)
-	require.NoError(t, err)
-	time.Sleep(5 * time.Second)
-	err = node4.VerifyMessageReceived(message2, msgHash2)
-	require.NoError(t, err, "Node5 did not receive message from node1 at iteration %d", 1)
-
-	// }
-}
-
-func TestSendMessagesInTwoPhases(t *testing.T) {
-
-	node1Config := DefaultWakuConfig
-	node1Config.Relay = true
-	node1, err := StartWakuNode("Node1", &node1Config)
-	require.NoError(t, err, "Failed to start Node1")
-
-	node2Config := DefaultWakuConfig
-	node2Config.Relay = true
-	node2, err := StartWakuNode("Node2", &node2Config)
-	require.NoError(t, err, "Failed to start Node2")
-
-	err = node1.ConnectPeer(node2)
-	require.NoError(t, err, "Failed to connect Node1 to Node2")
-
-	msgFromNode1 := node1.CreateMessage()
-	msgHash1, err := node1.RelayPublishNoCTX(DefaultPubsubTopic, msgFromNode1)
-	require.NoError(t, err, "Failed to publish from Node1")
-
+	totalIterations := 1000
+	for i := 1; i <= totalIterations; i++ {
+		var nodes []*WakuNode
+		for n := 1; n <= 5; n++ {
+			cfg := DefaultWakuConfig
+			cfg.Relay = true
+			cfg.Discv5Discovery = false
+			cfg.TcpPort, cfg.Discv5UdpPort, err = GetFreePortIfNeeded(0, 0)
+			require.NoError(t, err, "Failed to get free ports for node%d", n)
+			node, err := NewWakuNode(&cfg, fmt.Sprintf("node%d", n))
+			require.NoError(t, err, "Failed to create node%d", n)
+			err = node.Start()
+			require.NoError(t, err, "Failed to start node%d", n)
+			nodes = append(nodes, node)
+		}
+		err = ConnectAllPeers(nodes)
+		require.NoError(t, err)
+		message := nodes[0].CreateMessage()
+		msgHash, err := nodes[0].RelayPublishNoCTX(DefaultPubsubTopic, message)
+		require.NoError(t, err)
+		time.Sleep(500 * time.Millisecond)
+		err = nodes[4].VerifyMessageReceived(message, msgHash, 500*time.Millisecond)
+		require.NoError(t, err, "Node5 did not receive message from node1")
+		for _, node := range nodes {
+			node.StopAndDestroy()
+		}
+		runtime.GC()
+		time.Sleep(250 * time.Millisecond)
+		runtime.GC()
+		if i == 500 || i == 1000 {
+			runtime.ReadMemStats(&memStats)
+			Debug("Iteration %d, usage after teardown: %d KB", i, memStats.HeapAlloc/1024)
+			require.LessOrEqual(t, memStats.HeapAlloc, initialMem*3, "Memory usage soared above threshold after iteration %d", i)
+			rssNow, err := getRSSKB()
+			require.NoError(t, err)
+			Debug("Iteration %d, OS-level RSS after teardown: %d KB", i, rssNow)
+			require.LessOrEqual(t, rssNow, initialRSS*3, "OS-level RSS soared above threshold after iteration %d", i)
+		}
+		Debug("Iteration numberrrrrr  %d", i)
+	}
+	runtime.GC()
 	time.Sleep(500 * time.Millisecond)
-
-	err = node2.VerifyMessageReceived(msgFromNode1, msgHash1, 2*time.Second)
-	require.NoError(t, err, "Node2 did not receive message from Node1")
-
-	//node1.StopAndDestroy()
-	//node2.StopAndDestroy()
-
-	node3Config := DefaultWakuConfig
-	node3Config.Relay = true
-	node3, err := StartWakuNode("Node3", &node3Config)
-	require.NoError(t, err, "Failed to start Node3")
-
-	node4Config := DefaultWakuConfig
-	node4Config.Relay = true
-	node4, err := StartWakuNode("Node4", &node4Config)
-	require.NoError(t, err, "Failed to start Node4")
-
-	err = node3.ConnectPeer(node4)
-	require.NoError(t, err, "Failed to connect Node3 to Node4")
-
-	msgFromNode3 := node3.CreateMessage()
-	msgHash3, err := node3.RelayPublishNoCTX(DefaultPubsubTopic, msgFromNode3)
-	require.NoError(t, err, "Failed to publish from Node3")
-
-	time.Sleep(500 * time.Millisecond)
-
-	err = node4.VerifyMessageReceived(msgFromNode3, msgHash3, 2*time.Second)
-	require.NoError(t, err, "Node4 did not receive message from Node3")
-
-	node3.StopAndDestroy()
-	node4.StopAndDestroy()
+	runtime.GC()
+	runtime.ReadMemStats(&memStats)
+	finalMem := memStats.HeapAlloc
+	Debug("[%s] Memory usage at test END: %d KB", t.Name(), finalMem/1024)
+	require.LessOrEqual(t, finalMem, initialMem*3, "Memory usage soared above threshold after %d cycles", totalIterations)
+	finalRSS, err := getRSSKB()
+	require.NoError(t, err)
+	Debug("[%s] OS-level RSS at test END: %d KB", t.Name(), finalRSS)
+	require.LessOrEqual(t, finalRSS, initialRSS*3, "OS-level RSS soared above threshold after %d cycles", totalIterations)
 }
 
 func TestStoreQuery5kMessagesWithPagination(t *testing.T) {

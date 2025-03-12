@@ -95,24 +95,12 @@ func TestConnectUsingMultipleStaticPeers(t *testing.T) {
 
 	node1, err := StartWakuNode("node1", nil)
 	require.NoError(t, err, "Failed to start Node 1")
-	defer func() {
-		Debug("Stopping and destroying Node 1")
-		node1.StopAndDestroy()
-	}()
 
 	node2, err := StartWakuNode("node2", nil)
 	require.NoError(t, err, "Failed to start Node 2")
-	defer func() {
-		Debug("Stopping and destroying Node 2")
-		node2.StopAndDestroy()
-	}()
 
 	node3, err := StartWakuNode("node3", nil)
 	require.NoError(t, err, "Failed to start Node 3")
-	defer func() {
-		Debug("Stopping and destroying Node 3")
-		node3.StopAndDestroy()
-	}()
 
 	addr1, err := node1.ListenAddresses()
 	require.NoError(t, err, "Failed to get listen addresses for Node 1")
@@ -129,8 +117,12 @@ func TestConnectUsingMultipleStaticPeers(t *testing.T) {
 
 	node4, err := StartWakuNode("node4", &node4Config)
 	require.NoError(t, err, "Failed to start Node 4")
+
 	defer func() {
-		Debug("Stopping and destroying Node 4")
+		Debug("Stopping and destroying all Waku nodes")
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+		node3.StopAndDestroy()
 		node4.StopAndDestroy()
 	}()
 
@@ -230,7 +222,6 @@ func TestDiscv5DisabledNoPeersConnected(t *testing.T) {
 	Debug("Creating Node1")
 	node1, err := StartWakuNode("Node1", &nodeConfig)
 	require.NoError(t, err, "Failed to start Node1")
-	defer node1.StopAndDestroy()
 
 	enrNode1, err := node1.ENR()
 	require.NoError(t, err, "Failed to get ENR for Node1")
@@ -239,7 +230,12 @@ func TestDiscv5DisabledNoPeersConnected(t *testing.T) {
 	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
 	node2, err := StartWakuNode("Node2", &nodeConfig)
 	require.NoError(t, err, "Failed to start Node2")
-	defer node2.StopAndDestroy()
+
+	defer func() {
+		Debug("Stopping and destroying all Waku nodes")
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+	}()
 
 	Debug("Waiting to ensure no auto-connection")
 	time.Sleep(15 * time.Second)

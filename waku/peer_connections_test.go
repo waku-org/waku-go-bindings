@@ -90,6 +90,60 @@ func TestConnectMultipleNodesToSingleNode(t *testing.T) {
 	Debug("Test completed successfully: multiple nodes connected to a single node and verified peers")
 }
 
+func TestConnectUsingMultipleStaticPeers(t *testing.T) {
+	Debug("Starting TestConnectUsingMultipleStaticPeers")
+
+	node1, err := StartWakuNode("node1", nil)
+	require.NoError(t, err, "Failed to start Node 1")
+
+	node2, err := StartWakuNode("node2", nil)
+	require.NoError(t, err, "Failed to start Node 2")
+
+	node3, err := StartWakuNode("node3", nil)
+	require.NoError(t, err, "Failed to start Node 3")
+
+	addr1, err := node1.ListenAddresses()
+	require.NoError(t, err, "Failed to get listen addresses for Node 1")
+
+	addr2, err := node2.ListenAddresses()
+	require.NoError(t, err, "Failed to get listen addresses for Node 2")
+
+	addr3, err := node3.ListenAddresses()
+	require.NoError(t, err, "Failed to get listen addresses for Node 3")
+
+	node4Config := DefaultWakuConfig
+	node4Config.Discv5Discovery = false
+	node4Config.Staticnodes = []string{addr1[0].String(), addr2[0].String(), addr3[0].String()}
+
+	node4, err := StartWakuNode("node4", &node4Config)
+	require.NoError(t, err, "Failed to start Node 4")
+
+	defer func() {
+		Debug("Stopping and destroying all Waku nodes")
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+		node3.StopAndDestroy()
+		node4.StopAndDestroy()
+	}()
+
+	Debug("Verifying connected peers for Node 4")
+	connectedPeers, err := node4.GetConnectedPeers()
+	require.NoError(t, err, "Failed to get connected peers for Node 4")
+
+	node1PeerID, err := node1.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 1")
+	node2PeerID, err := node2.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 2")
+	node3PeerID, err := node3.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 3")
+
+	require.True(t, slices.Contains(connectedPeers, node1PeerID), "Node 1 should be a peer of Node 4")
+	require.True(t, slices.Contains(connectedPeers, node2PeerID), "Node 2 should be a peer of Node 4")
+	require.True(t, slices.Contains(connectedPeers, node3PeerID), "Node 3 should be a peer of Node 4")
+
+	Debug("Test passed: multiple nodes connected to a single node using Static Peers")
+}
+
 func TestDiscv5PeerMeshCount(t *testing.T) {
 	Debug("Starting test to verify peer count in mesh using Discv5 after topic subscription")
 
@@ -158,7 +212,49 @@ func TestDiscv5PeerMeshCount(t *testing.T) {
 	Debug("Test successfully verified peer count change after stopping Node3")
 }
 
-// this test commented as it will fail will be changed to have external ip in future task 
+func TestDiscv5DisabledNoPeersConnected(t *testing.T) {
+	Debug("Starting TestDiscv5DisabledNoPeersConnected")
+
+	nodeConfig := DefaultWakuConfig
+	nodeConfig.Discv5Discovery = false
+	nodeConfig.Relay = true
+
+	Debug("Creating Node1")
+	node1, err := StartWakuNode("Node1", &nodeConfig)
+	require.NoError(t, err, "Failed to start Node1")
+
+	enrNode1, err := node1.ENR()
+	require.NoError(t, err, "Failed to get ENR for Node1")
+	nodeConfig.Discv5BootstrapNodes = []string{enrNode1.String()}
+
+	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
+	node2, err := StartWakuNode("Node2", &nodeConfig)
+	require.NoError(t, err, "Failed to start Node2")
+
+	defer func() {
+		Debug("Stopping and destroying all Waku nodes")
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+	}()
+
+	Debug("Waiting to ensure no auto-connection")
+	time.Sleep(15 * time.Second)
+
+	Debug("Verifying number of peers connected to Nodes")
+	peerCount, err := node1.GetNumConnectedPeers()
+	require.NoError(t, err, "Failed to get number of peers in mesh for Node1")
+	Debug("Total number of connected peers for Node1: %d", peerCount)
+	require.Equal(t, 0, peerCount, "Expected Node1 to have exactly 0 peers in the mesh")
+
+	peerCount, err = node2.GetNumConnectedPeers()
+	require.NoError(t, err, "Failed to get number of peers in mesh for Node2")
+	Debug("Total number of connected peers for Node2: %d", peerCount)
+	require.Equal(t, 0, peerCount, "Expected Node2 to have exactly 0 peers in the mesh")
+
+	Debug("Test passed: all the nodes have 0 peers")
+}
+
+// this test commented as it will fail will be changed to have external ip in future task
 /*
 func TestDiscv5GetPeersConnected(t *testing.T) {
 	Debug("Starting test to verify peer count in mesh with 4 nodes using Discv5 (Chained Connection)")

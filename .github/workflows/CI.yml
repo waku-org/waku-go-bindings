@@ -11,15 +11,17 @@ on:
 jobs:
   endurance:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out repository
+      - name: Check out repository (with submodules)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive 
+          fetch-depth: 0         
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.21'  
 
       - name: Install dependencies
         run: go mod download
@@ -29,7 +31,7 @@ jobs:
           go test -v -count=1 -timeout=45m -run Test5Nodes1kTearDown ./... | tee testlogs.log
 
       - name: Upload Logs
-        uses: actions/upload-artifact@v4 
+        uses: actions/upload-artifact@v4
         with:
           name: endurance-logs
           path: testlogs.log

@@ -2,9 +2,9 @@ name: StressTests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "stress_test" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "stress_test" ]
   schedule:
     - cron: '0 2 * * *'
 

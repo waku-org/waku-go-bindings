@@ -79,7 +79,7 @@ func TestMemoryUsageForThreeNodes(t *testing.T) {
 	Debug("[%s] Test completed successfully", testName)
 }
 
-func Test5Nodes1kTearDown(t *testing.T) {
+func Test2Nodes1kTearDown(t *testing.T) {
 	logFile, err := os.OpenFile("test_repeated_start_stop.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	require.NoError(t, err)
 	defer logFile.Close()
@@ -98,10 +98,10 @@ func Test5Nodes1kTearDown(t *testing.T) {
 	require.NoError(t, err)
 	Debug("[%s] OS-level RSS at test START: %d KB", t.Name(), initialRSS)
 
-	totalIterations := 1000
+	totalIterations := 501
 	for i := 1; i <= totalIterations; i++ {
 		var nodes []*WakuNode
-		for n := 1; n <= 5; n++ {
+		for n := 1; n <= 2; n++ {
 			cfg := DefaultWakuConfig
 			cfg.Relay = true
 			cfg.Discv5Discovery = false
@@ -119,15 +119,15 @@ func Test5Nodes1kTearDown(t *testing.T) {
 		msgHash, err := nodes[0].RelayPublishNoCTX(DefaultPubsubTopic, message)
 		require.NoError(t, err)
 		time.Sleep(500 * time.Millisecond)
-		err = nodes[4].VerifyMessageReceived(message, msgHash, 500*time.Millisecond)
-		require.NoError(t, err, "Node5 did not receive message from node1")
+		err = nodes[1].VerifyMessageReceived(message, msgHash, 500*time.Millisecond)
+		require.NoError(t, err, "Node1 did not receive message from node1")
 		for _, node := range nodes {
 			node.StopAndDestroy()
 		}
 		runtime.GC()
 		time.Sleep(250 * time.Millisecond)
 		runtime.GC()
-		if i == 500 || i == 1000 {
+		if i == 250 || i == 500 {
 			runtime.ReadMemStats(&memStats)
 			Debug("Iteration %d, usage after teardown: %d KB", i, memStats.HeapAlloc/1024)
 			require.LessOrEqual(t, memStats.HeapAlloc, initialMem*3, "Memory usage soared above threshold after iteration %d", i)

@@ -40,7 +40,7 @@ jobs:
       - name: Run Endurance Test
         run: |
           # Increase timeout so long-running tests won't kill the job prematurely
-          go test -v -count=1 -timeout=45m -run Test5Nodes1kTearDown ./... | tee testlogs.log
+          go test -v  ./waku -count=1 -timeout=45m -run Test5Nodes1kTearDown ./... | tee testlogs.log
 
       - name: Upload Test Logs
         uses: actions/upload-artifact@v4

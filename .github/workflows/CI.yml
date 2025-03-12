@@ -44,7 +44,7 @@ jobs:
           go test -v -count=1 -timeout=45m -run Test5Nodes1kTearDown ./... | tee testlogs.log
 
       - name: Upload Test Logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: endurance-logs
           path: testlogs.log

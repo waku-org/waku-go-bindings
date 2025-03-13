@@ -3,15 +3,15 @@ package waku
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"runtime"
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"github.com/waku-org/waku-go-bindings/waku/common"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -21,10 +21,17 @@ func TestMemoryUsageForThreeNodes(t *testing.T) {
 	defer logFile.Close()
 
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
-	log.SetOutput(multiWriter)
-	logger := _getLogger()
-	logger.SetOutput(multiWriter)
-	logger.SetLevel(logrus.DebugLevel)
+	encoderCfg := zap.NewProductionEncoderConfig()
+	encoderCfg.TimeKey = "ts"
+	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+
+	core := zapcore.NewCore(
+		zapcore.NewConsoleEncoder(encoderCfg),
+		zapcore.AddSync(multiWriter),
+		zap.DebugLevel,
+	)
+	customLogger := zap.New(core)
+	SetLogger(customLogger)
 
 	testName := t.Name()
 
@@ -85,9 +92,16 @@ func Test2Nodes500IterationTearDown(t *testing.T) {
 	defer logFile.Close()
 
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
-	logger := _getLogger()
-	logger.SetOutput(multiWriter)
-	logger.SetLevel(logrus.DebugLevel)
+	encoderCfg := zap.NewProductionEncoderConfig()
+	encoderCfg.TimeKey = "ts"
+	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+	core := zapcore.NewCore(
+		zapcore.NewConsoleEncoder(encoderCfg),
+		zapcore.AddSync(multiWriter),
+		zap.DebugLevel,
+	)
+	customLogger := zap.New(core)
+	SetLogger(customLogger)
 
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
@@ -210,5 +224,5 @@ func TestStoreQuery5kMessagesWithPagination(t *testing.T) {
 
 	require.LessOrEqual(t, finalHeapAlloc, initialHeapAlloc*2, "Memory usage has grown too much")
 
-	Debug("Test completed successfully")
+	Debug("[%s] Test completed successfully", t.Name())
 }

@@ -1,0 +1,49 @@
+name: Endurance Tests
+
+on:
+  push:
+    branches: [ "stress_test" ]
+  pull_request:
+    branches: [ "stress_test" ]
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  endurance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Initialize & update submodules
+        run: git submodule update --init --recursive
+
+      - name: Prepare third_party directory
+        run: |
+          sudo mkdir -p third_party
+          sudo chown $USER third_party
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Build nwaku dependencies
+        run: make -C waku
+
+      - name: Run Endurance Test
+        run: |
+          # Increase timeout so long-running tests won't kill the job prematurely
+          go test -v  ./waku -count=1 -timeout=300m -run Test2Nodes500IterationTearDown ./... | tee testlogs.log
+
+      - name: Upload Test Logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: endurance-logs
+          path: testlogs.log

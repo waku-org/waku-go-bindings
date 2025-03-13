@@ -34,7 +34,7 @@ Now the module is ready for use in your project.
 
 ### Note
 
-In order to easily build the libwaku library on demand, it is recommended to add the following target to your project:
+In order to easily build the libwaku library on demand, it is recommended to add the following target in your project's Makefile:
 
 ```
 LIBWAKU_DEP_PATH=$(shell go list -m -f '{{.Dir}}' github.com/waku-org/waku-go-bindings)

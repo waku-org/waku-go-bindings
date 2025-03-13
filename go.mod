@@ -38,10 +38,7 @@ require (
 	google.golang.org/protobuf v1.34.2
 )
 
-require (
-	github.com/sirupsen/logrus v1.2.0
-	github.com/waku-org/go-waku v0.8.1-0.20241028194639-dd82c24e0057
-)
+require github.com/waku-org/go-waku v0.8.1-0.20241028194639-dd82c24e0057
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -59,7 +56,6 @@ require (
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/libp2p/go-msgio v0.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -83,7 +79,6 @@ require (
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.24.0 // indirect
-	golang.org/x/term v0.23.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect

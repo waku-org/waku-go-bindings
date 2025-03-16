@@ -2,7 +2,7 @@ name: Repeated Test Suite
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "stress_test" ]
   pull_request:
 
 jobs:

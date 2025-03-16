@@ -1,5 +1,5 @@
-//go:build !stress
-// +build !stress
+//go:build stress
+// +build stress
 
 package waku
 

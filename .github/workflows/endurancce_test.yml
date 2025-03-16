@@ -28,11 +28,11 @@ jobs:
         run: |
           for i in {1..10}; do
             echo "Iteration $i: measuring memory BEFORE the tests..."
-            go run waku/memory_utils.go --iteration $i --phase start
+            go run tools/memory_record.go --iteration $i --phase start
             echo "Running tests (iteration $i)..."
              go test -v -tags '!stress' ./...
             echo "Iteration $i: measuring memory AFTER the tests..."
-            go run waku/memory_utils.go --iteration $i --phase end
+            go run tools/memory_record.go --iteration $i --phase end
           done
 
       - name: Upload memory_metrics.csv

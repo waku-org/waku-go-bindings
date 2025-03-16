@@ -9,9 +9,20 @@ jobs:
   repeated-tests:
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Check out repo
+   steps:
+      - name: Check out repository
         uses: actions/checkout@v3
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Initialize & update submodules
+        run: git submodule update --init --recursive
+
+      - name: Prepare third_party directory
+        run: |
+          sudo mkdir -p third_party
+          sudo chown $USER third_party
 
       - name: Set up Go
         uses: actions/setup-go@v4

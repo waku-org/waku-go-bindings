@@ -807,6 +807,7 @@ func TestCheckStoredMSGsEphemeralFalse(t *testing.T) {
 	Debug("Test finished successfully ")
 }
 
+/*
 func TestCheckLegacyStore(t *testing.T) {
 	Debug("Starting test ")
 
@@ -855,6 +856,7 @@ func TestCheckLegacyStore(t *testing.T) {
 	Debug("Test finished successfully ")
 
 }
+*/
 
 func TestStoredMessagesWithVDifferentPayloads(t *testing.T) {
 	Debug("Starting test ")

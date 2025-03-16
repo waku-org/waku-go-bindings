@@ -3,13 +3,13 @@ name: Repeated Test Suite
 on:
   push:
     branches: [ "stress_test" ]
-  pull_request:
+  schedule:
+    - cron: '0 2 * * *'
 
 jobs:
   repeated-tests:
     runs-on: ubuntu-latest
-
-   steps:
+    steps:
       - name: Check out repository
         uses: actions/checkout@v3
         with:
@@ -27,7 +27,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21"   
+          go-version: "1.21"
 
       - name: Clean environment
         run: go clean -cache
@@ -41,7 +41,7 @@ jobs:
             echo "Iteration $i: measuring memory BEFORE the tests..."
             go run tools/memory_record.go --iteration $i --phase start
             echo "Running tests (iteration $i)..."
-             go test -v -tags '!stress' ./...
+            go test -v -tags '!stress' ./...
             echo "Iteration $i: measuring memory AFTER the tests..."
             go run tools/memory_record.go --iteration $i --phase end
           done

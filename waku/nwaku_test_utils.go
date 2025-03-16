@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff/v3"
@@ -255,26 +254,4 @@ func (n *WakuNode) GetStoredMessages(storeNode *WakuNode, storeRequest *common.S
 
 	Debug("Store query successful, retrieved %d messages", len(*res.Messages))
 	return res, nil
-}
-
-func getRSSKB() (uint64, error) {
-	f, err := os.Open("/proc/self/statm")
-	if err != nil {
-		return 0, err
-	}
-	defer f.Close()
-	data, err := io.ReadAll(f)
-	if err != nil {
-		return 0, err
-	}
-	fields := strings.Fields(string(data))
-	if len(fields) < 2 {
-		return 0, fmt.Errorf("unexpected /proc/self/statm format")
-	}
-	rssPages, err := strconv.ParseUint(fields[1], 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	pageSize := os.Getpagesize()
-	return (rssPages * uint64(pageSize)) / 1024, nil
 }

@@ -1,4 +1,4 @@
-
+//go:build !stress
 // +build !stress
 
 package waku
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/waku-org/waku-go-bindings/utils"
 	"github.com/waku-org/waku-go-bindings/waku/common"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -111,7 +112,7 @@ func Test2Nodes500IterationTearDown(t *testing.T) {
 	initialMem := memStats.HeapAlloc
 	Debug("[%s] Memory usage at test START: %d KB", t.Name(), initialMem/1024)
 
-	initialRSS, err := getRSSKB()
+	initialRSS, err := utils.GetRSSKB()
 	require.NoError(t, err)
 	Debug("[%s] OS-level RSS at test START: %d KB", t.Name(), initialRSS)
 
@@ -148,7 +149,7 @@ func Test2Nodes500IterationTearDown(t *testing.T) {
 			runtime.ReadMemStats(&memStats)
 			Debug("Iteration %d, usage after teardown: %d KB", i, memStats.HeapAlloc/1024)
 			require.LessOrEqual(t, memStats.HeapAlloc, initialMem*3, "Memory usage soared above threshold after iteration %d", i)
-			rssNow, err := getRSSKB()
+			rssNow, err := utils.GetRSSKB()
 			require.NoError(t, err)
 			Debug("Iteration %d, OS-level RSS after teardown: %d KB", i, rssNow)
 			//require.LessOrEqual(t, rssNow, initialRSS*10, "OS-level RSS soared above threshold after iteration %d", i)
@@ -162,7 +163,7 @@ func Test2Nodes500IterationTearDown(t *testing.T) {
 	finalMem := memStats.HeapAlloc
 	Debug("[%s] Memory usage at test END: %d KB", t.Name(), finalMem/1024)
 	require.LessOrEqual(t, finalMem, initialMem*3, "Memory usage soared above threshold after %d cycles", totalIterations)
-	finalRSS, err := getRSSKB()
+	finalRSS, err := utils.GetRSSKB()
 	require.NoError(t, err)
 	Debug("[%s] OS-level RSS at test END: %d KB", t.Name(), finalRSS)
 	require.LessOrEqual(t, finalRSS, initialRSS*3, "OS-level RSS soared above threshold after %d cycles", totalIterations)

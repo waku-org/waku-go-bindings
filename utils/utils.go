@@ -1,12 +1,12 @@
-package waku
+package utils
 
 import (
 	"encoding/csv"
-	"flag"
 	"fmt"
+	"io"
 	"os"
-	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -18,29 +18,7 @@ var (
 	mu        sync.Mutex
 )
 
-func main() {
-	flag.StringVar(&testName, "testName", "FullTestSuite", "Name of the test ")
-	flag.IntVar(&iteration, "iteration", 0, "Iteration number")
-	flag.StringVar(&phase, "phase", "", "'start' or 'end')")
-	flag.Parse()
-
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
-	heapKB := memStats.HeapAlloc / 1024
-
-	rssKB, err := getRSSKB()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to get RSS:", err)
-		rssKB = 0
-	}
-
-	if err := recordMemoryMetricsCSV(testName, iteration, phase, heapKB, rssKB); err != nil {
-		fmt.Fprintln(os.Stderr, "Error recording metrics:", err)
-		os.Exit(1)
-	}
-}
-
-func recordMemoryMetricsCSV(testName string, iter int, phase string, heapKB, rssKB uint64) error {
+func RecordMemoryMetricsCSV(testName string, iter int, phase string, heapKB, rssKB uint64) error {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -74,4 +52,26 @@ func recordMemoryMetricsCSV(testName string, iter int, phase string, heapKB, rss
 	}
 
 	return w.Write(row)
+}
+
+func GetRSSKB() (uint64, error) {
+	f, err := os.Open("/proc/self/statm")
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return 0, err
+	}
+	fields := strings.Fields(string(data))
+	if len(fields) < 2 {
+		return 0, fmt.Errorf("unexpected /proc/self/statm format")
+	}
+	rssPages, err := strconv.ParseUint(fields[1], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	pageSize := os.Getpagesize()
+	return (rssPages * uint64(pageSize)) / 1024, nil
 }

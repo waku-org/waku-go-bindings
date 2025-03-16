@@ -1,8 +1,6 @@
 name: Endurance Tests
 
 on:
-  push:
-    branches: [ "stress_test" ]
   pull_request:
     branches: [ "stress_test" ]
   schedule:

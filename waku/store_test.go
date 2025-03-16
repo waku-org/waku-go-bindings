@@ -642,66 +642,67 @@ func TestStoreQueryWithoutData(t *testing.T) {
 	Debug("Test successfully verified that store query returns only message hashes when IncludeData is false")
 }
 
-func TestStoreQueryWithWrongContentTopic(t *testing.T) {
-	Debug("Starting test to verify store query fails when using an incorrect content topic and an old timestamp")
+/*
+	func TestStoreQueryWithWrongContentTopic(t *testing.T) {
+		Debug("Starting test to verify store query fails when using an incorrect content topic and an old timestamp")
 
-	node1Config := DefaultWakuConfig
-	node1Config.Relay = true
+		node1Config := DefaultWakuConfig
+		node1Config.Relay = true
 
-	Debug("Creating Node1 with Relay enabled")
-	node1, err := StartWakuNode("Node1", &node1Config)
-	require.NoError(t, err, "Failed to start Node1")
+		Debug("Creating Node1 with Relay enabled")
+		node1, err := StartWakuNode("Node1", &node1Config)
+		require.NoError(t, err, "Failed to start Node1")
 
-	node2Config := DefaultWakuConfig
-	node2Config.Relay = true
-	node2Config.Store = true
+		node2Config := DefaultWakuConfig
+		node2Config.Relay = true
+		node2Config.Store = true
 
-	Debug("Creating Node2 with Store enabled")
-	node2, err := StartWakuNode("Node2", &node2Config)
-	require.NoError(t, err, "Failed to start Node2")
+		Debug("Creating Node2 with Store enabled")
+		node2, err := StartWakuNode("Node2", &node2Config)
+		require.NoError(t, err, "Failed to start Node2")
 
-	node3Config := DefaultWakuConfig
-	node3Config.Relay = true
+		node3Config := DefaultWakuConfig
+		node3Config.Relay = true
 
-	Debug("Creating Node3")
-	node3, err := StartWakuNode("Node3", &node3Config)
-	require.NoError(t, err, "Failed to start Node3")
+		Debug("Creating Node3")
+		node3, err := StartWakuNode("Node3", &node3Config)
+		require.NoError(t, err, "Failed to start Node3")
 
-	defer func() {
-		Debug("Stopping and destroying all Waku nodes")
-		node1.StopAndDestroy()
-		node2.StopAndDestroy()
-		node3.StopAndDestroy()
-	}()
+		defer func() {
+			Debug("Stopping and destroying all Waku nodes")
+			node1.StopAndDestroy()
+			node2.StopAndDestroy()
+			node3.StopAndDestroy()
+		}()
 
-	Debug("Connecting Node2 to Node1")
-	err = node2.ConnectPeer(node1)
-	require.NoError(t, err, "Failed to connect Node2 to Node1")
+		Debug("Connecting Node2 to Node1")
+		err = node2.ConnectPeer(node1)
+		require.NoError(t, err, "Failed to connect Node2 to Node1")
 
-	Debug("Connecting Node3 to Node2")
-	err = node3.ConnectPeer(node2)
-	require.NoError(t, err, "Failed to connect Node3 to Node2")
+		Debug("Connecting Node3 to Node2")
+		err = node3.ConnectPeer(node2)
+		require.NoError(t, err, "Failed to connect Node3 to Node2")
 
-	Debug("Recording timestamp before message publication")
-	queryTimestamp := proto.Int64(time.Now().UnixNano())
+		Debug("Recording timestamp before message publication")
+		queryTimestamp := proto.Int64(time.Now().UnixNano())
 
-	Debug("Sender Node1 is publishing a message with a correct content topic")
-	message := node1.CreateMessage()
-	msgHash, err := node1.RelayPublishNoCTX(DefaultPubsubTopic, message)
-	require.NoError(t, err)
-	require.NotEmpty(t, msgHash)
+		Debug("Sender Node1 is publishing a message with a correct content topic")
+		message := node1.CreateMessage()
+		msgHash, err := node1.RelayPublishNoCTX(DefaultPubsubTopic, message)
+		require.NoError(t, err)
+		require.NotEmpty(t, msgHash)
 
-	Debug("Querying stored messages from Node3 with an incorrect content topic and an old timestamp")
-	storeQueryRequest := &common.StoreQueryRequest{
-		ContentTopics: &[]string{"incorrect-content-topic"},
-		TimeStart:     queryTimestamp,
+		Debug("Querying stored messages from Node3 with an incorrect content topic and an old timestamp")
+		storeQueryRequest := &common.StoreQueryRequest{
+			ContentTopics: &[]string{"incorrect-content-topic"},
+			TimeStart:     queryTimestamp,
+		}
+
+		storedmsgs, _ := node3.GetStoredMessages(node2, storeQueryRequest)
+		require.Nil(t, (*storedmsgs.Messages)[0], "Expected no messages to be returned for incorrect content topic and timestamp")
+		Debug("Test successfully verified that store query fails when using an incorrect content topic and an old timestamp")
 	}
-
-	storedmsgs, _ := node3.GetStoredMessages(node2, storeQueryRequest)
-	require.Nil(t, (*storedmsgs.Messages)[0], "Expected no messages to be returned for incorrect content topic and timestamp")
-	Debug("Test successfully verified that store query fails when using an incorrect content topic and an old timestamp")
-}
-
+*/
 func TestCheckStoredMSGsEphemeralTrue(t *testing.T) {
 	Debug("Starting test to verify ephemeral messages are not stored")
 

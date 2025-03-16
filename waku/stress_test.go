@@ -1,3 +1,6 @@
+
+// +build !stress
+
 package waku
 
 import (

@@ -55,7 +55,7 @@ func TestStoreQuery3Nodes(t *testing.T) {
 	Debug("Waiting for peer connections to stabilize")
 	err = WaitForAutoConnection([]*WakuNode{node1, node2, node3})
 	require.NoError(t, err, "Nodes did not connect within timeout")
-
+	queryTimestamp := proto.Int64(time.Now().UnixNano())
 	Debug("Publishing message from Node1 using RelayPublish")
 	message := node1.CreateMessage(&pb.WakuMessage{
 		Payload:      []byte("test-message"),
@@ -63,7 +63,6 @@ func TestStoreQuery3Nodes(t *testing.T) {
 		Timestamp:    proto.Int64(time.Now().UnixNano()),
 	})
 
-	queryTimestamp := proto.Int64(time.Now().UnixNano())
 	msgHash, err := node1.RelayPublishNoCTX(DefaultPubsubTopic, message)
 	require.NoError(t, err, "Failed to publish message from Node1")
 
@@ -79,11 +78,11 @@ func TestStoreQuery3Nodes(t *testing.T) {
 		TimeStart: queryTimestamp,
 	}
 	res, err := node3.GetStoredMessages(node2, storeQueryRequest)
-	var storedMessages = *res.Messages
+	var storedMessages = (*res.Messages)[0]
 	require.NoError(t, err, "Failed to retrieve stored messages from Node2")
-	require.NotEmpty(t, storedMessages, "Expected at least one stored message")
+	require.NotEmpty(t, storedMessages.WakuMessage, "Expected at least one stored message")
 	Debug("Verifying stored message matches the published message")
-	require.Equal(t, message.Payload, storedMessages[0].WakuMessage.Payload, "Stored message payload does not match")
+	require.Equal(t, string(message.Payload), string(storedMessages.WakuMessage.Payload), "Stored message payload does not match")
 	Debug("Test successfully verified store query from a peer using direct peer connections")
 }
 

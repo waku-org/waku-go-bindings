@@ -404,6 +404,7 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 	var sentHashes []common.MessageHash
 	defaultPubsubTopic := DefaultPubsubTopic
 
+	queryTimestamp := proto.Int64(time.Now().UnixNano())
 	Debug("Publishing %d messages from Node1 using RelayPublish", numMessages)
 	for i := 0; i < numMessages; i++ {
 		message := node1.CreateMessage(&pb.WakuMessage{
@@ -428,6 +429,7 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 		ContentTopics:     &[]string{"test-content-topic"},
 		PaginationLimit:   proto.Uint64(5),
 		PaginationForward: false,
+		TimeStart:         queryTimestamp,
 	}
 
 	res1, err := node3.GetStoredMessages(node2, &storeRequest1)
@@ -436,6 +438,9 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 
 	storedMessages1 := *res1.Messages
 	require.Len(t, storedMessages1, 5, "Expected to retrieve exactly 5 messages from first query")
+	for i := 0; i < 5; i++ {
+		Debug("stored hashes round 2 iteration %i is %s", i, storedMessages1[i].MessageHash)
+	}
 
 	for i := 0; i < 5; i++ {
 		require.Equal(t, sentHashes[i+3], storedMessages1[i].MessageHash, "Message order mismatch in first query")
@@ -445,9 +450,10 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 	storeRequest2 := common.StoreQueryRequest{
 		IncludeData:       true,
 		ContentTopics:     &[]string{"test-content-topic"},
-		PaginationLimit:   proto.Uint64(5),
+		PaginationLimit:   proto.Uint64(3),
 		PaginationForward: false,
 		PaginationCursor:  &res1.PaginationCursor,
+		TimeStart:         queryTimestamp,
 	}
 
 	res2, err := node3.GetStoredMessages(node2, &storeRequest2)
@@ -457,8 +463,8 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 	storedMessages2 := *res2.Messages
 	require.Len(t, storedMessages2, 3, "Expected to retrieve exactly 3 messages from second query")
 
-	for i := 2; i < 5; i++ {
-		require.Equal(t, sentHashes[i-2], storedMessages2[i].MessageHash, "Message order mismatch in second query")
+	for i := 0; i < 3; i++ {
+		require.Equal(t, sentHashes[i], storedMessages2[i].MessageHash, "Message order mismatch in second query")
 
 	}
 

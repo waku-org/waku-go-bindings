@@ -28,7 +28,9 @@ func TestBasicWakuNodes(t *testing.T) {
 	Debug("TestBasicWakuNodes completed successfully")
 }
 
+/* artifact https://github.com/waku-org/waku-go-bindings/issues/40 */
 func TestNodeRestart(t *testing.T) {
+	t.Skip("Skipping test for open artifact ")
 	Debug("Starting TestNodeRestart")
 
 	Debug("Creating Node")

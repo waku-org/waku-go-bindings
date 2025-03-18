@@ -292,12 +292,13 @@ func TestRelaySubscribeAndPeerCountChange(t *testing.T) {
 	node2, err := StartWakuNode("Node2", &node2Config)
 	require.NoError(t, err, "Failed to start Node2")
 
-	node2Address, err := node2.ListenAddresses()
-	require.NoError(t, err, "Failed to get listening address for Node2")
+	// Commented till we configure external IPs
+	//node2Address, err := node2.ListenAddresses()
+	//require.NoError(t, err, "Failed to get listening address for Node2")
 
 	node3Config := DefaultWakuConfig
 	node3Config.Relay = true
-	node3Config.Staticnodes = []string{node2Address[0].String()}
+	node3Config.Staticnodes = []string{node1Address[0].String()}
 
 	Debug("Creating Node3 with Node2 as a static node")
 	node3, err := StartWakuNode("Node3", &node3Config)
@@ -318,7 +319,7 @@ func TestRelaySubscribeAndPeerCountChange(t *testing.T) {
 
 	Debug("Waiting for peer connections to stabilize")
 	options := func(b *backoff.ExponentialBackOff) {
-		b.MaxElapsedTime = 10 * time.Second // Only set the max wait time
+		b.MaxElapsedTime = 10 * time.Second
 	}
 	require.NoError(t, RetryWithBackOff(func() error {
 		numPeers, err := node1.GetNumConnectedRelayPeers(defaultPubsubTopic)

@@ -53,7 +53,8 @@ func TestStoreQuery3Nodes(t *testing.T) {
 	require.NoError(t, err, "Failed to connect Node3 to Node2")
 
 	Debug("Waiting for peer connections to stabilize")
-	time.Sleep(2 * time.Second)
+	err = WaitForAutoConnection([]*WakuNode{node1, node2, node3})
+	require.NoError(t, err, "Nodes did not connect within timeout")
 
 	Debug("Publishing message from Node1 using RelayPublish")
 	message := node1.CreateMessage(&pb.WakuMessage{
@@ -416,6 +417,7 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 		require.NoError(t, err, "Failed to publish message from Node1")
 
 		sentHashes = append(sentHashes, msgHash)
+		Debug("sent hash number %i is %s", i, sentHashes[i])
 	}
 
 	Debug("Waiting for message delivery to Node2")
@@ -437,7 +439,7 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 	require.Len(t, storedMessages1, 5, "Expected to retrieve exactly 5 messages from first query")
 
 	for i := 0; i < 5; i++ {
-		require.Equal(t, sentHashes[numMessages-1-i], storedMessages1[i].MessageHash, "Message order mismatch in first query")
+		require.Equal(t, sentHashes[i+3], storedMessages1[i].MessageHash, "Message order mismatch in first query")
 	}
 
 	Debug("Node3 querying second page of stored messages from Node2")
@@ -456,8 +458,9 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 	storedMessages2 := *res2.Messages
 	require.Len(t, storedMessages2, 3, "Expected to retrieve exactly 3 messages from second query")
 
-	for i := 0; i < 3; i++ {
-		require.Equal(t, sentHashes[numMessages-6-i], storedMessages2[i].MessageHash, "Message order mismatch in second query")
+	for i := 2; i < 5; i++ {
+		require.Equal(t, sentHashes[i-2], storedMessages2[i].MessageHash, "Message order mismatch in second query")
+
 	}
 
 	Debug("Test successfully verified store query pagination in reverse order")

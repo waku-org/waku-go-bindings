@@ -14,7 +14,7 @@ import (
 
 func TestStoreQuery3Nodes(t *testing.T) {
 	Debug("Starting test to verify store query from a peer using direct peer connections")
-
+	queryTimestamp := proto.Int64(time.Now().UnixNano())
 	node1Config := DefaultWakuConfig
 	node1Config.Relay = true
 
@@ -55,7 +55,6 @@ func TestStoreQuery3Nodes(t *testing.T) {
 	Debug("Waiting for peer connections to stabilize")
 	err = WaitForAutoConnection([]*WakuNode{node1, node2, node3})
 	require.NoError(t, err, "Nodes did not connect within timeout")
-	queryTimestamp := proto.Int64(time.Now().UnixNano())
 	Debug("Publishing message from Node1 using RelayPublish")
 	message := node1.CreateMessage(&pb.WakuMessage{
 		Payload:      []byte("test-message"),
@@ -75,7 +74,8 @@ func TestStoreQuery3Nodes(t *testing.T) {
 
 	Debug("Node3 querying stored messages from Node2")
 	storeQueryRequest := &common.StoreQueryRequest{
-		TimeStart: queryTimestamp,
+		TimeStart:   queryTimestamp,
+		IncludeData: true,
 	}
 	res, err := node3.GetStoredMessages(node2, storeQueryRequest)
 	var storedMessages = (*res.Messages)[0]
@@ -117,7 +117,7 @@ func TestStoreQueryMultipleMessages(t *testing.T) {
 		node2.StopAndDestroy()
 		node3.StopAndDestroy()
 	}()
-
+	var timestamp = proto.Int64(time.Now().UnixNano())
 	Debug("Connecting Node1 to Node2")
 	err = node1.ConnectPeer(node2)
 	require.NoError(t, err, "Failed to connect Node1 to Node2")
@@ -151,7 +151,14 @@ func TestStoreQueryMultipleMessages(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	Debug("Node3 querying stored messages from Node2")
-	res, err := node3.GetStoredMessages(node2, nil)
+	storeRequest := &common.StoreQueryRequest{
+		IncludeData:       true,
+		ContentTopics:     &[]string{"test-content-topic"},
+		PaginationLimit:   proto.Uint64(uint64(50)),
+		PaginationForward: true,
+		TimeStart:         timestamp,
+	}
+	res, err := node3.GetStoredMessages(node2, storeRequest)
 	require.NoError(t, err, "Failed to retrieve stored messages from Node2")
 	require.NotNil(t, res.Messages, "Expected stored messages but received nil")
 
@@ -282,7 +289,7 @@ func TestStoreQueryWithPaginationMultiplePages(t *testing.T) {
 		node2.StopAndDestroy()
 		node3.StopAndDestroy()
 	}()
-
+	var timestamp = proto.Int64(time.Now().UnixNano())
 	Debug("Connecting Node1 to Node2")
 	err = node1.ConnectPeer(node2)
 	require.NoError(t, err, "Failed to connect Node1 to Node2")
@@ -321,6 +328,7 @@ func TestStoreQueryWithPaginationMultiplePages(t *testing.T) {
 		ContentTopics:     &[]string{"test-content-topic"},
 		PaginationLimit:   proto.Uint64(5),
 		PaginationForward: true,
+		TimeStart:         timestamp,
 	}
 
 	res1, err := node3.GetStoredMessages(node2, &storeRequest1)
@@ -1010,6 +1018,7 @@ func TestStoredMessagesWithDifferentPubsubTopics(t *testing.T) {
 		Debug("Node1 is publishing message on pubsub topic: %s", pubsubTopic)
 		node1.RelaySubscribe(pubsubTopic)
 		node2.RelaySubscribe(pubsubTopic)
+		time.Sleep(time.Second * 2)
 		queryTimestamp := proto.Int64(time.Now().UnixNano())
 		var msg = node1.CreateMessage()
 		msgHash, err := node1.RelayPublishNoCTX(pubsubTopic, msg)

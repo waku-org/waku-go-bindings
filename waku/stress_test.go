@@ -1,5 +1,5 @@
-//go:build stress
-// +build stress
+//go:build !stress
+// +build !stress
 
 package waku
 
@@ -229,4 +229,53 @@ func TestStoreQuery5kMessagesWithPagination(t *testing.T) {
 	require.LessOrEqual(t, finalHeapAlloc, initialHeapAlloc*2, "Memory usage has grown too much")
 
 	Debug("[%s] Test completed successfully", t.Name())
+}
+
+func TestHighThroughput10kPublish(t *testing.T) {
+
+	node1Cfg := DefaultWakuConfig
+	node1Cfg.Relay = true
+	node1, err := StartWakuNode("node1", &node1Cfg)
+	require.NoError(t, err, "Failed to start node1")
+	defer node1.StopAndDestroy()
+
+	node2Cfg := DefaultWakuConfig
+	node2Cfg.Relay = true
+	node2, err := StartWakuNode("node2", &node2Cfg)
+	require.NoError(t, err, "Failed to start node2")
+	defer node2.StopAndDestroy()
+
+	err = node1.ConnectPeer(node2)
+	require.NoError(t, err, "Failed to connect node1 to node2")
+
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	startHeapKB := memStats.HeapAlloc / 1024
+	startRSSKB, err := utils.GetRSSKB()
+	require.NoError(t, err, "Failed to read initial RSS")
+
+	Debug("Memory usage BEFORE sending => HeapAlloc: %d KB, RSS: %d KB", startHeapKB, startRSSKB)
+
+	totalMessages := 10000
+	pubsubTopic := DefaultPubsubTopic
+
+	startTime := time.Now()
+	for i := 0; i < totalMessages; i++ {
+		message := node1.CreateMessage()
+		message.Payload = []byte(fmt.Sprintf("High-throughput message #%d", i))
+
+		_, err := node1.RelayPublishNoCTX(pubsubTopic, message)
+		require.NoError(t, err, "Failed to publish message %d", i)
+	}
+	duration := time.Since(startTime)
+
+	runtime.ReadMemStats(&memStats)
+	endHeapKB := memStats.HeapAlloc / 1024
+	endRSSKB, err := utils.GetRSSKB()
+	require.NoError(t, err, "Failed to read final RSS")
+
+	Debug("Memory usage AFTER sending => HeapAlloc: %d KB, RSS: %d KB", endHeapKB, endRSSKB)
+
+	Debug("Published %d messages in %s", totalMessages, duration)
+	Debug("Total time per message ~ %v", duration/time.Duration(totalMessages))
 }

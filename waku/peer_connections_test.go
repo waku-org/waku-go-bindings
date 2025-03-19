@@ -134,6 +134,7 @@ func TestDiscv5PeerMeshCount(t *testing.T) {
 	Debug("Waiting for nodes to auto-connect via Discv5")
 	err = WaitForAutoConnection([]*WakuNode{node1, node2, node3})
 	require.NoError(t, err, "Nodes did not auto-connect within timeout")
+	time.Sleep(time.Second * 10)
 
 	Debug("Fetching number of peers in mesh for Node1 before stopping Node3")
 	peerCountBefore, err := node1.GetNumPeersInMesh(defaultPubsubTopic)
@@ -158,7 +159,7 @@ func TestDiscv5PeerMeshCount(t *testing.T) {
 	Debug("Test successfully verified peer count change after stopping Node3")
 }
 
-// this test commented as it will fail will be changed to have external ip in future task 
+// this test commented as it will fail will be changed to have external ip in future task
 /*
 func TestDiscv5GetPeersConnected(t *testing.T) {
 	Debug("Starting test to verify peer count in mesh with 4 nodes using Discv5 (Chained Connection)")

@@ -44,7 +44,7 @@ jobs:
       - name: Repeated test runs
         run: |
           set +e
-          for i in {1..10}; do
+          for i in {1..100}; do
             echo "Iteration $i: measuring memory BEFORE the tests..."
             go run tools/memory_record.go --iteration $i --phase start
             echo "Running tests (iteration $i)..."

@@ -279,3 +279,60 @@ func TestHighThroughput10kPublish(t *testing.T) {
 	Debug("Published %d messages in %s", totalMessages, duration)
 	Debug("Total time per message ~ %v", duration/time.Duration(totalMessages))
 }
+
+func TestConnectDisconnect50Iteration(t *testing.T) {
+	node0Cfg := DefaultWakuConfig
+	node0Cfg.Relay = true
+	node0, err := StartWakuNode("node0", &node0Cfg)
+	require.NoError(t, err, "Failed to start node0")
+
+	node1Cfg := DefaultWakuConfig
+	node1Cfg.Relay = true
+	node1, err := StartWakuNode("node1", &node1Cfg)
+	require.NoError(t, err, "Failed to start node1")
+
+	defer func() {
+		node0.StopAndDestroy()
+		node1.StopAndDestroy()
+	}()
+
+	iterations := 50
+	for i := 1; i <= iterations; i++ {
+		if i%2 == 1 {
+			err := node0.ConnectPeer(node1)
+			require.NoError(t, err, "Iteration %d: node0 failed to connect to node1", i)
+			time.Sleep(1 * time.Second)
+			count, err := node0.GetNumConnectedPeers()
+			require.NoError(t, err, "Iteration %d: failed to get peers for node0", i)
+			Debug("Iteration %d: node0 sees %d connected peers", i, count)
+			if count == 1 {
+				msg := node0.CreateMessage()
+				msg.Payload = []byte(fmt.Sprintf("Iteration %d: message from node0", i))
+				msgHash, err := node0.RelayPublishNoCTX(DefaultPubsubTopic, msg)
+				require.NoError(t, err, "Iteration %d: node0 failed to publish message", i)
+				Debug("Iteration %d: node0 published message with hash %s", i, msgHash.String())
+			}
+			err = node0.DisconnectPeer(node1)
+			require.NoError(t, err, "Iteration %d: node0 failed to disconnect from node1", i)
+			Debug("Iteration %d: node0 disconnected from node1", i)
+		} else {
+			err := node1.ConnectPeer(node0)
+			require.NoError(t, err, "Iteration %d: node1 failed to connect to node0", i)
+			time.Sleep(1 * time.Second)
+			count, err := node1.GetNumConnectedPeers()
+			require.NoError(t, err, "Iteration %d: failed to get peers for node1", i)
+			Debug("Iteration %d: node1 sees %d connected peers", i, count)
+			if count == 1 {
+				msg := node1.CreateMessage()
+				msg.Payload = []byte(fmt.Sprintf("Iteration %d: message from node1", i))
+				msgHash, err := node1.RelayPublishNoCTX(DefaultPubsubTopic, msg)
+				require.NoError(t, err, "Iteration %d: node1 failed to publish message", i)
+				Debug("Iteration %d: node1 published message with hash %s", i, msgHash.String())
+			}
+			err = node1.DisconnectPeer(node0)
+			require.NoError(t, err, "Iteration %d: node1 failed to disconnect from node0", i)
+			Debug("Iteration %d: node1 disconnected from node0", i)
+		}
+		time.Sleep(2 * time.Second)
+	}
+}

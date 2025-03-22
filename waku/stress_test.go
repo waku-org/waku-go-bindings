@@ -280,17 +280,32 @@ func TestHighThroughput10kPublish(t *testing.T) {
 	Debug("Total time per message ~ %v", duration/time.Duration(totalMessages))
 }
 
-func TestConnectDisconnect50Iteration(t *testing.T) {
+func TestConnectDisconnect500Iteration(t *testing.T) {
+	logFile, err := os.OpenFile("endurance_readings.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	require.NoError(t, err)
+	defer logFile.Close()
+	encoderCfg := zap.NewProductionEncoderConfig()
+	encoderCfg.TimeKey = "ts"
+	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+	core := zapcore.NewCore(zapcore.NewConsoleEncoder(encoderCfg), zapcore.AddSync(logFile), zap.DebugLevel)
+	logger := zap.New(core)
+	SetLogger(logger)
+
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	startHeapKB := memStats.HeapAlloc / 1024
+	startRSSKB, err := utils.GetRSSKB()
+	require.NoError(t, err)
+	Debug("Before test: HeapAlloc = %d KB, RSS = %d KB", startHeapKB, startRSSKB)
+
 	node0Cfg := DefaultWakuConfig
 	node0Cfg.Relay = true
 	node0, err := StartWakuNode("node0", &node0Cfg)
-	require.NoError(t, err, "Failed to start node0")
-
+	require.NoError(t, err)
 	node1Cfg := DefaultWakuConfig
 	node1Cfg.Relay = true
 	node1, err := StartWakuNode("node1", &node1Cfg)
-	require.NoError(t, err, "Failed to start node1")
-
+	require.NoError(t, err)
 	defer func() {
 		node0.StopAndDestroy()
 		node1.StopAndDestroy()
@@ -298,41 +313,27 @@ func TestConnectDisconnect50Iteration(t *testing.T) {
 
 	iterations := 50
 	for i := 1; i <= iterations; i++ {
-		if i%2 == 1 {
-			err := node0.ConnectPeer(node1)
-			require.NoError(t, err, "Iteration %d: node0 failed to connect to node1", i)
-			time.Sleep(1 * time.Second)
-			count, err := node0.GetNumConnectedPeers()
-			require.NoError(t, err, "Iteration %d: failed to get peers for node0", i)
-			Debug("Iteration %d: node0 sees %d connected peers", i, count)
-			if count == 1 {
-				msg := node0.CreateMessage()
-				msg.Payload = []byte(fmt.Sprintf("Iteration %d: message from node0", i))
-				msgHash, err := node0.RelayPublishNoCTX(DefaultPubsubTopic, msg)
-				require.NoError(t, err, "Iteration %d: node0 failed to publish message", i)
-				Debug("Iteration %d: node0 published message with hash %s", i, msgHash.String())
-			}
-			err = node0.DisconnectPeer(node1)
-			require.NoError(t, err, "Iteration %d: node0 failed to disconnect from node1", i)
-			Debug("Iteration %d: node0 disconnected from node1", i)
-		} else {
-			err := node1.ConnectPeer(node0)
-			require.NoError(t, err, "Iteration %d: node1 failed to connect to node0", i)
-			time.Sleep(1 * time.Second)
-			count, err := node1.GetNumConnectedPeers()
-			require.NoError(t, err, "Iteration %d: failed to get peers for node1", i)
-			Debug("Iteration %d: node1 sees %d connected peers", i, count)
-			if count == 1 {
-				msg := node1.CreateMessage()
-				msg.Payload = []byte(fmt.Sprintf("Iteration %d: message from node1", i))
-				msgHash, err := node1.RelayPublishNoCTX(DefaultPubsubTopic, msg)
-				require.NoError(t, err, "Iteration %d: node1 failed to publish message", i)
-				Debug("Iteration %d: node1 published message with hash %s", i, msgHash.String())
-			}
-			err = node1.DisconnectPeer(node0)
-			require.NoError(t, err, "Iteration %d: node1 failed to disconnect from node0", i)
-			Debug("Iteration %d: node1 disconnected from node0", i)
+		err := node0.ConnectPeer(node1)
+		require.NoError(t, err, "Iteration %d: node0 failed to connect to node1", i)
+		time.Sleep(1 * time.Second)
+		count, err := node0.GetNumConnectedPeers()
+		require.NoError(t, err, "Iteration %d: failed to get peers for node0", i)
+		Debug("Iteration %d: node0 sees %d connected peers", i, count)
+		if count == 1 {
+			msg := node0.CreateMessage()
+			msg.Payload = []byte(fmt.Sprintf("Iteration %d: message from node0", i))
+			msgHash, err := node0.RelayPublishNoCTX(DefaultPubsubTopic, msg)
+			require.NoError(t, err, "Iteration %d: node0 failed to publish message", i)
+			Debug("Iteration %d: node0 published message with hash %s", i, msgHash.String())
 		}
+		err = node0.DisconnectPeer(node1)
+		require.NoError(t, err, "Iteration %d: node0 failed to disconnect from node1", i)
+		Debug("Iteration %d: node0 disconnected from node1", i)
 		time.Sleep(2 * time.Second)
 	}
+	runtime.ReadMemStats(&memStats)
+	endHeapKB := memStats.HeapAlloc / 1024
+	endRSSKB, err := utils.GetRSSKB()
+	require.NoError(t, err)
+	Debug("After test: HeapAlloc = %d KB, RSS = %d KB", endHeapKB, endRSSKB)
 }

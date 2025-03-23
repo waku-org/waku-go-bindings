@@ -1,12 +1,15 @@
 name: Endurance Tests
 
 on:
-  push:
+  pull_request:
     branches: [ "stress_test" ]
+  schedule:
+    - cron: '0 2 * * *'
 
 jobs:
   endurance:
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
@@ -32,7 +35,7 @@ jobs:
       - name: Build nwaku dependencies
         run: make -C waku
 
-      - name: Run Stress Test
+      - name: Run Endurance Test
         run: |
           go test -v ./waku/stress_test.go -count=1 -timeout=360m | tee testlogs.log
 

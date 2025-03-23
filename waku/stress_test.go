@@ -19,7 +19,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestMemoryUsageForThreeNodes(t *testing.T) {
+func TestStressMemoryUsageForThreeNodes(t *testing.T) {
 	logFile, err := os.OpenFile("test_logs.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	require.NoError(t, err)
 	defer logFile.Close()
@@ -90,7 +90,7 @@ func TestMemoryUsageForThreeNodes(t *testing.T) {
 	Debug("[%s] Test completed successfully", testName)
 }
 
-func Test2Nodes500IterationTearDown(t *testing.T) {
+func TestStress2Nodes500IterationTearDown(t *testing.T) {
 	logFile, err := os.OpenFile("test_repeated_start_stop.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	require.NoError(t, err)
 	defer logFile.Close()
@@ -169,7 +169,7 @@ func Test2Nodes500IterationTearDown(t *testing.T) {
 	require.LessOrEqual(t, finalRSS, initialRSS*3, "OS-level RSS soared above threshold after %d cycles", totalIterations)
 }
 
-func TestStoreQuery5kMessagesWithPagination(t *testing.T) {
+func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 	Debug("Starting test")
 
 	nodeConfig := DefaultWakuConfig
@@ -231,7 +231,7 @@ func TestStoreQuery5kMessagesWithPagination(t *testing.T) {
 	Debug("[%s] Test completed successfully", t.Name())
 }
 
-func TestHighThroughput10kPublish(t *testing.T) {
+func TestStressHighThroughput10kPublish(t *testing.T) {
 
 	node1Cfg := DefaultWakuConfig
 	node1Cfg.Relay = true
@@ -280,7 +280,7 @@ func TestHighThroughput10kPublish(t *testing.T) {
 	Debug("Total time per message ~ %v", duration/time.Duration(totalMessages))
 }
 
-func TestConnectDisconnect500Iteration(t *testing.T) {
+func TestStressConnectDisconnect500Iteration(t *testing.T) {
 	logFile, err := os.OpenFile("endurance_readings.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	require.NoError(t, err)
 	defer logFile.Close()

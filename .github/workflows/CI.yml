@@ -35,7 +35,7 @@ jobs:
 
       - name: Run Endurance Test
         run: |
-          go test -v ./waku/stress_test.go -count=1 -timeout=360m | tee testlogs.log
+          go test -v ./waku -count=1 -timeout=360m -run '^TestStress' | tee testlogs.log
 
       - name: Upload Test Logs
         uses: actions/upload-artifact@v4

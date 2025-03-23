@@ -1,10 +1,8 @@
 name: Endurance Tests
 
 on:
-  pull_request:
+  push:
     branches: [ "stress_test" ]
-  schedule:
-    - cron: '0 2 * * *'
 
 jobs:
   endurance:

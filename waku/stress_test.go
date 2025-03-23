@@ -337,3 +337,65 @@ func TestStressConnectDisconnect500Iteration(t *testing.T) {
 	require.NoError(t, err)
 	Debug("After test: HeapAlloc = %d KB, RSS = %d KB", endHeapKB, endRSSKB)
 }
+
+func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
+	nodePubCfg := DefaultWakuConfig
+	nodePubCfg.Relay = true
+	publisher, err := StartWakuNode("publisher", &nodePubCfg)
+	require.NoError(t, err)
+	defer publisher.StopAndDestroy()
+
+	nodeRecvCfg := DefaultWakuConfig
+	nodeRecvCfg.Relay = true
+	receiver, err := StartWakuNode("receiver", &nodeRecvCfg)
+	require.NoError(t, err)
+	defer receiver.StopAndDestroy()
+
+	err = receiver.RelaySubscribe(DefaultPubsubTopic)
+	require.NoError(t, err)
+
+	err = publisher.ConnectPeer(receiver)
+	require.NoError(t, err)
+
+	time.Sleep(2 * time.Second)
+
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	startHeapKB := memStats.HeapAlloc / 1024
+	startRSSKB, err := utils.GetRSSKB()
+	require.NoError(t, err)
+	Debug("Before endurance test: HeapAlloc = %d KB, RSS = %d KB", startHeapKB, startRSSKB)
+
+	payloadSize := 150 * 1024
+	largePayload := make([]byte, payloadSize)
+	for i := range largePayload {
+		largePayload[i] = 'a'
+	}
+
+	duration := 30 * time.Minute
+	endTime := time.Now().Add(duration)
+	var publishedMessages int
+	startTime := time.Now()
+	for time.Now().Before(endTime) {
+		msg := publisher.CreateMessage()
+		msg.Payload = largePayload
+		ephemeral := true
+		msg.Ephemeral = &ephemeral
+		_, err := publisher.RelayPublishNoCTX(DefaultPubsubTopic, msg)
+		if err == nil {
+			publishedMessages++
+		} else {
+			Debug("Error publishing ephemeral message: %v", err)
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	totalDuration := time.Since(startTime)
+	throughput := float64(publishedMessages) / totalDuration.Seconds()
+	Debug("Published %d ephemeral messages with large payload in %s (throughput: %.2f msgs/sec)", publishedMessages, totalDuration, throughput)
+
+	runtime.ReadMemStats(&memStats)
+	endHeapKB := memStats.HeapAlloc / 1024
+	endRSSKB, err := utils.GetRSSKB()
+	require.NoError(t, err)
+	Debug("After endurance test: HeapAlloc = %d KB, RSS = %d KB", endHeapKB, endRSSKB)
+}

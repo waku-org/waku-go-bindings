@@ -5,7 +5,6 @@ package waku
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"runtime"
 	"testing"
@@ -16,34 +15,17 @@ import (
 	"github.com/waku-org/waku-go-bindings/waku/common"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	//	"go.uber.org/zap/zapcore"
 	"google.golang.org/protobuf/proto"
 )
 
 func TestStressMemoryUsageForThreeNodes(t *testing.T) {
-	logFile, err := os.OpenFile("test_logs.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
-	require.NoError(t, err)
-	defer logFile.Close()
-
-	multiWriter := io.MultiWriter(os.Stdout, logFile)
-	encoderCfg := zap.NewProductionEncoderConfig()
-	encoderCfg.TimeKey = "ts"
-	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
-
-	core := zapcore.NewCore(
-		zapcore.NewConsoleEncoder(encoderCfg),
-		zapcore.AddSync(multiWriter),
-		zap.DebugLevel,
-	)
-	customLogger := zap.New(core)
-	SetLogger(customLogger)
-
 	testName := t.Name()
-
+	var err error
 	var memStats runtime.MemStats
-
 	runtime.ReadMemStats(&memStats)
 	Debug("[%s] Memory usage BEFORE creating nodes: %d KB", testName, memStats.HeapAlloc/1024)
-
 	node1Cfg := DefaultWakuConfig
 	node1Cfg.TcpPort, node1Cfg.Discv5UdpPort, err = GetFreePortIfNeeded(0, 0)
 	require.NoError(t, err)
@@ -91,21 +73,6 @@ func TestStressMemoryUsageForThreeNodes(t *testing.T) {
 }
 
 func TestStress2Nodes500IterationTearDown(t *testing.T) {
-	logFile, err := os.OpenFile("test_repeated_start_stop.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
-	require.NoError(t, err)
-	//defer logFile.Close()
-
-	multiWriter := io.MultiWriter(os.Stdout, logFile)
-	encoderCfg := zap.NewProductionEncoderConfig()
-	encoderCfg.TimeKey = "ts"
-	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
-	core := zapcore.NewCore(
-		zapcore.NewConsoleEncoder(encoderCfg),
-		zapcore.AddSync(multiWriter),
-		zap.DebugLevel,
-	)
-	customLogger := zap.New(core)
-	SetLogger(customLogger)
 
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)

@@ -33,9 +33,12 @@ jobs:
       - name: Build nwaku dependencies
         run: make -C waku
 
+      - name: Increase ulimit
+        run: sudo sh -c "ulimit -n 8192"  
+
       - name: Run Endurance Test
         run: |
-          go test -v ./waku -count=1 -timeout=360m -run '^TestStress' | tee testlogs.log
+          go test -p=1 -v ./waku -count=1 -timeout=360m -run '^TestStress' | tee testlogs.log
 
       - name: Upload Test Logs
         uses: actions/upload-artifact@v4

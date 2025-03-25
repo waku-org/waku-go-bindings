@@ -72,73 +72,10 @@ func TestStressMemoryUsageForThreeNodes(t *testing.T) {
 	Debug("[%s] Test completed successfully", testName)
 }
 
-func TestStress2Nodes500IterationTearDown(t *testing.T) {
-
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
-	initialMem := memStats.HeapAlloc
-	Debug("[%s] Memory usage at test START: %d KB", t.Name(), initialMem/1024)
-
-	initialRSS, err := utils.GetRSSKB()
-	require.NoError(t, err)
-	Debug("[%s] OS-level RSS at test START: %d KB", t.Name(), initialRSS)
-
-	totalIterations := 500
-	for i := 1; i <= totalIterations; i++ {
-		var nodes []*WakuNode
-		for n := 1; n <= 2; n++ {
-			cfg := DefaultWakuConfig
-			cfg.Relay = true
-			cfg.Discv5Discovery = false
-			cfg.TcpPort, cfg.Discv5UdpPort, err = GetFreePortIfNeeded(0, 0)
-			require.NoError(t, err, "Failed to get free ports for node%d", n)
-			node, err := NewWakuNode(&cfg, fmt.Sprintf("node%d", n))
-			require.NoError(t, err, "Failed to create node%d", n)
-			err = node.Start()
-			require.NoError(t, err, "Failed to start node%d", n)
-			nodes = append(nodes, node)
-		}
-		err = ConnectAllPeers(nodes)
-		require.NoError(t, err)
-		message := nodes[0].CreateMessage()
-		msgHash, err := nodes[0].RelayPublishNoCTX(DefaultPubsubTopic, message)
-		require.NoError(t, err)
-		time.Sleep(500 * time.Millisecond)
-		err = nodes[1].VerifyMessageReceived(message, msgHash, 500*time.Millisecond)
-		require.NoError(t, err, "Node1 did not receive message from node1")
-		for _, node := range nodes {
-			node.StopAndDestroy()
-		}
-		runtime.GC()
-		time.Sleep(250 * time.Millisecond)
-		runtime.GC()
-		if i == 250 || i == 500 {
-			runtime.ReadMemStats(&memStats)
-			Debug("Iteration %d, usage after teardown: %d KB", i, memStats.HeapAlloc/1024)
-			require.LessOrEqual(t, memStats.HeapAlloc, initialMem*3, "Memory usage soared above threshold after iteration %d", i)
-			rssNow, err := utils.GetRSSKB()
-			require.NoError(t, err)
-			Debug("Iteration %d, OS-level RSS after teardown: %d KB", i, rssNow)
-			//require.LessOrEqual(t, rssNow, initialRSS*10, "OS-level RSS soared above threshold after iteration %d", i)
-		}
-		Debug("Iteration numberrrrrr  %d", i)
-	}
-	runtime.GC()
-	time.Sleep(500 * time.Millisecond)
-	runtime.GC()
-	runtime.ReadMemStats(&memStats)
-	finalMem := memStats.HeapAlloc
-	Debug("[%s] Memory usage at test END: %d KB", t.Name(), finalMem/1024)
-	//	require.LessOrEqual(t, finalMem, initialMem*3, "Memory usage soared above threshold after %d cycles", totalIterations)
-	finalRSS, err := utils.GetRSSKB()
-	require.NoError(t, err)
-	Debug("[%s] OS-level RSS at test END: %d KB", t.Name(), finalRSS)
-	//require.LessOrEqual(t, finalRSS, initialRSS*3, "OS-level RSS soared above threshold after %d cycles", totalIterations)
-}
-
 func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 	Debug("Starting test")
-
+	runtime.GC()
+	time.Sleep(5 * time.Second)
 	nodeConfig := DefaultWakuConfig
 	nodeConfig.Relay = true
 	nodeConfig.Store = true
@@ -365,4 +302,69 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	endRSSKB, err := utils.GetRSSKB()
 	require.NoError(t, err)
 	Debug("After endurance test: HeapAlloc = %d KB, RSS = %d KB", endHeapKB, endRSSKB)
+}
+
+func TestStress2Nodes500IterationTearDown(t *testing.T) {
+
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	initialMem := memStats.HeapAlloc
+	Debug("[%s] Memory usage at test START: %d KB", t.Name(), initialMem/1024)
+
+	initialRSS, err := utils.GetRSSKB()
+	require.NoError(t, err)
+	Debug("[%s] OS-level RSS at test START: %d KB", t.Name(), initialRSS)
+
+	totalIterations := 500
+	for i := 1; i <= totalIterations; i++ {
+		var nodes []*WakuNode
+		for n := 1; n <= 2; n++ {
+			cfg := DefaultWakuConfig
+			cfg.Relay = true
+			cfg.Discv5Discovery = false
+			cfg.TcpPort, cfg.Discv5UdpPort, err = GetFreePortIfNeeded(0, 0)
+			require.NoError(t, err, "Failed to get free ports for node%d", n)
+			node, err := NewWakuNode(&cfg, fmt.Sprintf("node%d", n))
+			require.NoError(t, err, "Failed to create node%d", n)
+			err = node.Start()
+			require.NoError(t, err, "Failed to start node%d", n)
+			nodes = append(nodes, node)
+		}
+		err = ConnectAllPeers(nodes)
+		require.NoError(t, err)
+		message := nodes[0].CreateMessage()
+		msgHash, err := nodes[0].RelayPublishNoCTX(DefaultPubsubTopic, message)
+		require.NoError(t, err)
+		time.Sleep(500 * time.Millisecond)
+		err = nodes[1].VerifyMessageReceived(message, msgHash, 500*time.Millisecond)
+		require.NoError(t, err, "Node1 did not receive message from node1")
+		for _, node := range nodes {
+			node.StopAndDestroy()
+			time.Sleep(50 * time.Millisecond)
+		}
+		runtime.GC()
+		time.Sleep(250 * time.Millisecond)
+		runtime.GC()
+		if i == 250 || i == 500 {
+			runtime.ReadMemStats(&memStats)
+			Debug("Iteration %d, usage after teardown: %d KB", i, memStats.HeapAlloc/1024)
+			require.LessOrEqual(t, memStats.HeapAlloc, initialMem*3, "Memory usage soared above threshold after iteration %d", i)
+			rssNow, err := utils.GetRSSKB()
+			require.NoError(t, err)
+			Debug("Iteration %d, OS-level RSS after teardown: %d KB", i, rssNow)
+			//require.LessOrEqual(t, rssNow, initialRSS*10, "OS-level RSS soared above threshold after iteration %d", i)
+		}
+		Debug("Iteration numberrrrrr  %d", i)
+	}
+	runtime.GC()
+	time.Sleep(500 * time.Millisecond)
+	runtime.GC()
+	runtime.ReadMemStats(&memStats)
+	finalMem := memStats.HeapAlloc
+	Debug("[%s] Memory usage at test END: %d KB", t.Name(), finalMem/1024)
+	//	require.LessOrEqual(t, finalMem, initialMem*3, "Memory usage soared above threshold after %d cycles", totalIterations)
+	finalRSS, err := utils.GetRSSKB()
+	require.NoError(t, err)
+	Debug("[%s] OS-level RSS at test END: %d KB", t.Name(), finalRSS)
+	//require.LessOrEqual(t, finalRSS, initialRSS*3, "OS-level RSS soared above threshold after %d cycles", totalIterations)
 }

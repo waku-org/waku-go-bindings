@@ -161,18 +161,17 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 	Debug("Memory usage BEFORE sending => HeapAlloc: %d KB, RSS: %d KB", startHeapKB, startRSSKB)
 
-	totalMessages := 1000
+	totalMessages := 5000
 	pubsubTopic := DefaultPubsubTopic
 
-	startTime := time.Now()
 	for i := 0; i < totalMessages; i++ {
 		message := node1.CreateMessage()
 		message.Payload = []byte(fmt.Sprintf("High-throughput message #%d", i))
 
 		_, err := node1.RelayPublishNoCTX(pubsubTopic, message)
 		require.NoError(t, err, "Failed to publish message %d", i)
+		time.Sleep(500 * time.Millisecond)
 	}
-	duration := time.Since(startTime)
 
 	runtime.ReadMemStats(&memStats)
 	endHeapKB := memStats.HeapAlloc / 1024
@@ -180,9 +179,6 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 	require.NoError(t, err, "Failed to read final RSS")
 
 	Debug("Memory usage AFTER sending => HeapAlloc: %d KB, RSS: %d KB", endHeapKB, endRSSKB)
-
-	Debug("Published %d messages in %s", totalMessages, duration)
-	Debug("Total time per message ~ %v", duration/time.Duration(totalMessages))
 }
 
 func TestStressConnectDisconnect500Iteration(t *testing.T) {
@@ -456,4 +452,84 @@ func TestStress2Nodes500IterationTearDown(t *testing.T) {
 	require.NoError(t, err)
 	Debug("[%s] OS-level RSS at test END: %d KB", t.Name(), finalRSS)
 	//require.LessOrEqual(t, finalRSS, initialRSS*3, "OS-level RSS soared above threshold after %d cycles", totalIterations)
+}
+
+func TestPeerExchangePXLoad(t *testing.T) {
+	testName := "PeerExchangePXLoad"
+	pxServerCfg := DefaultWakuConfig
+	pxServerCfg.PeerExchange = true
+	pxServerCfg.Relay = true
+	pxServer, err := StartWakuNode("PXServer", &pxServerCfg)
+	require.NoError(t, err, "Failed to start PX server")
+	defer pxServer.StopAndDestroy()
+
+	relayA, err := StartWakuNode("RelayA", &DefaultWakuConfig)
+	require.NoError(t, err, "Failed to start RelayA")
+	defer relayA.StopAndDestroy()
+
+	relayB, err := StartWakuNode("RelayB", &DefaultWakuConfig)
+	require.NoError(t, err, "Failed to start RelayB")
+	defer relayB.StopAndDestroy()
+
+	err = pxServer.ConnectPeer(relayA)
+	require.NoError(t, err, "PXServer failed to connect RelayA")
+	err = pxServer.ConnectPeer(relayB)
+	require.NoError(t, err, "PXServer failed to connect RelayB")
+
+	time.Sleep(2 * time.Second)
+
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	startHeapKB := memStats.HeapAlloc / 1024
+	startRSSKB, err := utils.GetRSSKB()
+	require.NoError(t, err, "Failed to get initial RSS")
+	Debug("%s: Before test: HeapAlloc=%d KB, RSS=%d KB", testName, startHeapKB, startRSSKB)
+
+	// Save the initial memory reading to CSV
+	err = recordMemoryMetricsPX(testName, "start", startHeapKB, startRSSKB)
+	require.NoError(t, err, "Failed to record start metrics")
+
+	testDuration := 30 * time.Minute
+	endTime := time.Now().Add(testDuration)
+
+	lastPublishTime := time.Now().Add(-5 * time.Second) // so first publish is immediate
+	for time.Now().Before(endTime) {
+		// Publish a message from the PX server every 5 seconds
+		if time.Since(lastPublishTime) >= 5*time.Second {
+			msg := pxServer.CreateMessage()
+			msg.Payload = []byte("PX server message stream")
+			_, _ = pxServer.RelayPublishNoCTX(DefaultPubsubTopic, msg)
+			lastPublishTime = time.Now()
+		}
+
+		// Create a light node that relies on PX, run for 3s
+		lightCfg := DefaultWakuConfig
+		lightCfg.Relay = false
+		lightCfg.Store = false
+		lightCfg.PeerExchange = true
+		lightNode, err := StartWakuNode("LightNode", &lightCfg)
+		if err == nil {
+			errPX := lightNode.ConnectPeer(pxServer)
+			if errPX == nil {
+				// Request peers from PX server
+				_, _ = lightNode.PeerExchangeRequest(2)
+			}
+			time.Sleep(3 * time.Second)
+			lightNode.StopAndDestroy()
+		} else {
+			Debug("Failed to start light node: %v", err)
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	runtime.ReadMemStats(&memStats)
+	endHeapKB := memStats.HeapAlloc / 1024
+	endRSSKB, err := utils.GetRSSKB()
+	require.NoError(t, err, "Failed to get final RSS")
+	Debug("Memory %s: After test: HeapAlloc=%d KB, RSS=%d KB", testName, endHeapKB, endRSSKB)
+
+	// Save the final memory reading to CSV
+	err = recordMemoryMetricsPX(testName, "end", endHeapKB, endRSSKB)
+	require.NoError(t, err, "Failed to record end metrics")
 }

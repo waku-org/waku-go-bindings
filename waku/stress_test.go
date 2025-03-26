@@ -6,7 +6,6 @@ package waku
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"runtime"
 	"testing"
 	"time"
@@ -14,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/waku-org/waku-go-bindings/utils"
 	"github.com/waku-org/waku-go-bindings/waku/common"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	//	"go.uber.org/zap/zapcore"
 	"google.golang.org/protobuf/proto"
@@ -182,16 +179,6 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 }
 
 func TestStressConnectDisconnect500Iteration(t *testing.T) {
-	logFile, err := os.OpenFile("endurance_readings.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	require.NoError(t, err)
-	defer logFile.Close()
-	encoderCfg := zap.NewProductionEncoderConfig()
-	encoderCfg.TimeKey = "ts"
-	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
-	core := zapcore.NewCore(zapcore.NewConsoleEncoder(encoderCfg), zapcore.AddSync(logFile), zap.DebugLevel)
-	logger := zap.New(core)
-	SetLogger(logger)
-
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 	startHeapKB := memStats.HeapAlloc / 1024
@@ -212,7 +199,7 @@ func TestStressConnectDisconnect500Iteration(t *testing.T) {
 		node1.StopAndDestroy()
 	}()
 
-	iterations := 50
+	iterations := 200
 	for i := 1; i <= iterations; i++ {
 		err := node0.ConnectPeer(node1)
 		require.NoError(t, err, "Iteration %d: node0 failed to connect to node1", i)
@@ -265,7 +252,7 @@ func TestStressRandomNodesInMesh(t *testing.T) {
 	require.NoError(t, err2, "Failed to read initial RSS")
 	Debug("Memory at start of test: HeapAlloc=%d KB, RSS=%d KB", startHeapKB, startRSSKB)
 
-	testDuration := 20 * time.Minute
+	testDuration := 30 * time.Minute
 	endTime := time.Now().Add(testDuration)
 
 	for time.Now().Before(endTime) {
@@ -355,7 +342,7 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	require.NoError(t, err)
 	Debug("Before endurance test: HeapAlloc = %d KB, RSS = %d KB", startHeapKB, startRSSKB)
 
-	payloadSize := 150 * 1024
+	payloadSize := 148 * 1024
 	largePayload := make([]byte, payloadSize)
 	for i := range largePayload {
 		largePayload[i] = 'a'
@@ -364,7 +351,6 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	duration := 30 * time.Minute
 	endTime := time.Now().Add(duration)
 	var publishedMessages int
-	startTime := time.Now()
 	for time.Now().Before(endTime) {
 		msg := publisher.CreateMessage()
 		msg.Payload = largePayload
@@ -374,13 +360,10 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 		if err == nil {
 			publishedMessages++
 		} else {
-			Debug("Error publishing ephemeral message: %v", err)
+			Error("Error publishing ephemeral message: %v", err)
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	totalDuration := time.Since(startTime)
-	throughput := float64(publishedMessages) / totalDuration.Seconds()
-	Debug("Published %d ephemeral messages with large payload in %s (throughput: %.2f msgs/sec)", publishedMessages, totalDuration, throughput)
 
 	runtime.ReadMemStats(&memStats)
 	endHeapKB := memStats.HeapAlloc / 1024

@@ -45,3 +45,7 @@ buildlib:
    sudo chown $(USER) third_party &&\
    make -C waku
 ```
+
+## Example Usage
+
+For an example on how to use this package, please take a look at our [example-go-bindings](https://github.com/gabrielmer/example-waku-go-bindings) repo

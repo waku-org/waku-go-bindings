@@ -243,8 +243,9 @@ func TestStressConnectDisconnect500Iteration(t *testing.T) {
 	Debug("After test: HeapAlloc = %d KB, RSS = %d KB", endHeapKB, endRSSKB)
 }
 
-func TestMultiNodeRelayMeshHighChurnConnectAllNoMessages(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
+func TestStressRandomNodesInMesh(t *testing.T) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 	minNodes := 5
 	maxNodes := 10
 	nodes := make([]*WakuNode, 0, maxNodes)
@@ -258,6 +259,7 @@ func TestMultiNodeRelayMeshHighChurnConnectAllNoMessages(t *testing.T) {
 	}
 
 	err := ConnectAllPeers(nodes)
+	time.Sleep(1 * time.Second)
 	require.NoError(t, err, "Failed to connect initial nodes with ConnectAllPeers")
 
 	var memStats runtime.MemStats
@@ -265,13 +267,13 @@ func TestMultiNodeRelayMeshHighChurnConnectAllNoMessages(t *testing.T) {
 	startHeapKB := memStats.HeapAlloc / 1024
 	startRSSKB, err2 := utils.GetRSSKB()
 	require.NoError(t, err2, "Failed to read initial RSS")
-	Debug("Before high-churn mesh test: HeapAlloc=%d KB, RSS=%d KB", startHeapKB, startRSSKB)
+	Debug("Memory at start of test: HeapAlloc=%d KB, RSS=%d KB", startHeapKB, startRSSKB)
 
 	testDuration := 20 * time.Minute
 	endTime := time.Now().Add(testDuration)
 
 	for time.Now().Before(endTime) {
-		action := rand.Intn(2)
+		action := r.Intn(2)
 
 		if action == 0 && len(nodes) < maxNodes {
 			i := len(nodes)
@@ -284,23 +286,23 @@ func TestMultiNodeRelayMeshHighChurnConnectAllNoMessages(t *testing.T) {
 				if err == nil {
 					Debug("Added node%d, now connecting all peers", i+1)
 				} else {
-					Debug("Failed to reconnect all peers after adding node%d: %v", i+1, errConn)
+					Debug("Failed to reconnect all peers after adding node%d: %v", i+1, err)
 				}
 			} else {
 				Debug("Failed to start new node: %v", err)
 			}
 		} else if action == 1 && len(nodes) > minNodes {
-			removeIndex := rand.Intn(len(nodes))
+			removeIndex := r.Intn(len(nodes))
 			toRemove := nodes[removeIndex]
 			nodes = append(nodes[:removeIndex], nodes[removeIndex+1:]...)
 			toRemove.StopAndDestroy()
 			Debug("Removed node  %d from mesh", removeIndex)
 			if len(nodes) > 1 {
-				errConn := ConnectAllPeers(nodes)
-				if errConn == nil {
+				err := ConnectAllPeers(nodes)
+				if err == nil {
 					Debug("Reconnected all peers  node  %d", removeIndex)
 				} else {
-					Debug("Failed to reconnect all peers when removing node  %d: %v", removeIndex, errConn)
+					Debug("Failed to reconnect all peers when removing node  %d: %v", removeIndex, err)
 				}
 			}
 		}
@@ -327,9 +329,8 @@ func TestMultiNodeRelayMeshHighChurnConnectAllNoMessages(t *testing.T) {
 	endHeapKB := memStats.HeapAlloc / 1024
 	endRSSKB, err3 := utils.GetRSSKB()
 	require.NoError(t, err3, "Failed to read final RSS")
-	Debug("After high-churn mesh test: HeapAlloc=%d KB, RSS=%d KB", endHeapKB, endRSSKB)
+	Debug("Memory at end of test: HeapAlloc=%d KB, RSS=%d KB", endHeapKB, endRSSKB)
 }
-
 func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	nodePubCfg := DefaultWakuConfig
 	nodePubCfg.Relay = true

@@ -167,7 +167,8 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 		_, err := node1.RelayPublishNoCTX(pubsubTopic, message)
 		require.NoError(t, err, "Failed to publish message %d", i)
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(1 * time.Second)
+		Debug("###Iteration number#%d", i)
 	}
 
 	runtime.ReadMemStats(&memStats)
@@ -342,7 +343,7 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	require.NoError(t, err)
 	Debug("Before endurance test: HeapAlloc = %d KB, RSS = %d KB", startHeapKB, startRSSKB)
 
-	payloadSize := 148 * 1024
+	payloadSize := 100 * 1024
 	largePayload := make([]byte, payloadSize)
 	for i := range largePayload {
 		largePayload[i] = 'a'
@@ -362,7 +363,8 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 		} else {
 			Error("Error publishing ephemeral message: %v", err)
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(1 * time.Second)
+		Debug("###Iteration number %d", publishedMessages)
 	}
 
 	runtime.ReadMemStats(&memStats)

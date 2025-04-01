@@ -231,6 +231,10 @@ package waku
 		waku_relay_get_num_connected_peers(ctx, pubSubTopic, (WakuCallBack) GoCallback, resp);
 	}
 
+	static void cGoWakuGetConnectedRelayPeers(void* ctx, char* pubSubTopic, void* resp) {
+		waku_relay_get_connected_peers(ctx, pubSubTopic, (WakuCallBack) GoCallback, resp);
+	}
+
 	static void cGoWakuGetConnectedPeers(void* wakuCtx, void* resp) {
 		waku_get_connected_peers(wakuCtx, (WakuCallBack) GoCallback, resp);
 	}
@@ -529,6 +533,60 @@ func (n *WakuNode) GetNumConnectedRelayPeers(optPubsubTopic ...string) (int, err
 	Error("Failed to get number of connected relay peers for %s: %s", n.nodeName, errMsg)
 
 	return 0, errors.New(errMsg)
+}
+
+func (n *WakuNode) GetConnectedRelayPeers(optPubsubTopic ...string) (peer.IDSlice, error) {
+
+	pubsubTopic := ""
+	if len(optPubsubTopic) > 0 {
+		pubsubTopic = optPubsubTopic[0]
+	}
+
+	if n == nil {
+		err := errors.New("waku node is nil")
+		Error("Failed to get connected relay peers: %v", err)
+		return nil, err
+	}
+
+	Debug("Fetching connected relay peers for pubsubTopic: %v, node: %v", pubsubTopic, n.nodeName)
+
+	wg := sync.WaitGroup{}
+	var resp = C.allocResp(unsafe.Pointer(&wg))
+	defer C.freeResp(resp)
+
+	var cPubsubTopic = C.CString(pubsubTopic)
+	defer C.free(unsafe.Pointer(cPubsubTopic))
+
+	wg.Add(1)
+	C.cGoWakuGetConnectedRelayPeers(n.wakuCtx, cPubsubTopic, resp)
+	wg.Wait()
+
+	if C.getRet(resp) == C.RET_OK {
+		peersStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+		if peersStr == "" {
+			Debug("No connected relay peers found for pubsubTopic: %v, node: %v", pubsubTopic, n.nodeName)
+			return nil, nil
+		}
+
+		peerIDs := strings.Split(peersStr, ",")
+		var peers peer.IDSlice
+		for _, peerID := range peerIDs {
+			id, err := peer.Decode(peerID)
+			if err != nil {
+				Error("Failed to decode peer ID for %v: %v", n.nodeName, err)
+				return nil, err
+			}
+			peers = append(peers, id)
+		}
+
+		Debug("Successfully fetched connected relay peers for pubsubTopic: %v, node: %v count: %v", pubsubTopic, n.nodeName, len(peers))
+		return peers, nil
+	}
+
+	errMsg := "error GetConnectedRelayPeers: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	Error("Failed to get connected relay peers for pubsubTopic: %v:, node: %v. %v", pubsubTopic, n.nodeName, errMsg)
+
+	return nil, errors.New(errMsg)
 }
 
 func (n *WakuNode) DisconnectPeerByID(peerID peer.ID) error {

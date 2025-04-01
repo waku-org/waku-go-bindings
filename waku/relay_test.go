@@ -2,6 +2,7 @@ package waku
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -64,6 +65,104 @@ func TestVerifyNumConnectedRelayPeers(t *testing.T) {
 	}
 
 	t.Logf("Successfully connected node2 and node3 to node1. Relay Peers: %d, Total Peers: %d", numRelayPeers, len(connectedPeersNode1))
+}
+
+func TestVerifyConnectedRelayPeers(t *testing.T) {
+
+	customShard := uint16(65)
+	customPubsubTopic := FormatWakuRelayTopic(DEFAULT_CLUSTER_ID, customShard)
+	node1Cfg := DefaultWakuConfig
+	node1Cfg.Relay = true
+	node1Cfg.Shards = []uint16{64, customShard}
+	node1, err := StartWakuNode("node1", &node1Cfg)
+	if err != nil {
+		t.Fatalf("Failed to start node1: %v", err)
+	}
+	node2Cfg := DefaultWakuConfig
+	node2Cfg.Relay = true
+	node2, err := StartWakuNode("node2", &node2Cfg)
+	if err != nil {
+		t.Fatalf("Failed to start node2: %v", err)
+	}
+
+	node2PeerID, err := node2.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 2")
+
+	node3, err := StartWakuNode("node3", nil)
+	if err != nil {
+		t.Fatalf("Failed to start node3: %v", err)
+	}
+
+	node4Cfg := DefaultWakuConfig
+	node4Cfg.Relay = true
+	node4Cfg.Shards = []uint16{customShard}
+	node4, err := StartWakuNode("node4", &node4Cfg)
+	if err != nil {
+		t.Fatalf("Failed to start node4: %v", err)
+	}
+
+	node4PeerID, err := node4.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 4")
+
+	defer func() {
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+		node3.StopAndDestroy()
+		node4.StopAndDestroy()
+	}()
+
+	err = node2.ConnectPeer(node1)
+	if err != nil {
+		t.Fatalf("Failed to connect node2 to node1: %v", err)
+	}
+
+	err = node3.ConnectPeer(node1)
+	if err != nil {
+		t.Fatalf("Failed to connect node3 to node1: %v", err)
+	}
+
+	err = node4.ConnectPeer(node1)
+	if err != nil {
+		t.Fatalf("Failed to connect node4 to node1: %v", err)
+	}
+
+	connectedPeersNode1, err := node1.GetConnectedPeers()
+	if err != nil {
+		t.Fatalf("Failed to get connected peers for node1: %v", err)
+	}
+	if len(connectedPeersNode1) != 3 {
+		t.Fatalf("Expected 2 connected peers on node1, but got %d", len(connectedPeersNode1))
+	}
+
+	relayPeers, err := node1.GetConnectedRelayPeers()
+	if err != nil {
+		t.Fatalf("Failed to get connected relay peers for node1: %v", err)
+	}
+	if len(relayPeers) != 2 {
+		t.Fatalf("Expected 2 relay peers on node1, but got %d", len(relayPeers))
+	}
+	require.True(t, slices.Contains(relayPeers, node2PeerID), "Node 2 should be included in node 1's connected relay peers")
+	require.True(t, slices.Contains(relayPeers, node4PeerID), "Node 4 should be included in node 1's connected relay peers")
+
+	relayPeersDefaultPubsub, err := node1.GetConnectedRelayPeers(DefaultPubsubTopic)
+	if err != nil {
+		t.Fatalf("Failed to get connected relay peers for node1 and default pubsub topic: %v", err)
+	}
+	if len(relayPeersDefaultPubsub) != 1 {
+		t.Fatalf("Expected 1 relay peers on node1 for default pubsub topic, but got %d", len(relayPeersDefaultPubsub))
+	}
+	require.True(t, slices.Contains(relayPeersDefaultPubsub, node2PeerID), "Node 2 should be included in node 1's connected relay peers for the default pubsub topic")
+
+	relayPeersCustomPubsub, err := node1.GetConnectedRelayPeers(customPubsubTopic)
+	if err != nil {
+		t.Fatalf("Failed to get connected relay peers for node1 and custom pubsub topic: %v", err)
+	}
+	if len(relayPeersCustomPubsub) != 1 {
+		t.Fatalf("Expected 1 relay peers on node1 for custom pubsub topic, but got %d", len(relayPeersCustomPubsub))
+	}
+	require.True(t, slices.Contains(relayPeersCustomPubsub, node4PeerID), "Node 4 should be included in node 1's connected relay peers for the custom pubsub topic")
+
+	t.Logf("Successfully connected node2, node3 and node4 to node1. Relay Peers: %d, Total Peers: %d", len(relayPeers), len(connectedPeersNode1))
 }
 
 func TestRelayMessageTransmission(t *testing.T) {

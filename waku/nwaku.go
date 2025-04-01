@@ -602,11 +602,11 @@ func (n *WakuNode) GetConnectedPeers() (peer.IDSlice, error) {
 func (n *WakuNode) GetPeersInMesh(pubsubTopic string) (peer.IDSlice, error) {
 	if n == nil {
 		err := errors.New("waku node is nil")
-		Error("Failed to get peers in mesh %v", err)
+		Error("Failed to get peers in mesh: %v", err)
 		return nil, err
 	}
 
-	Debug("Fetching connected peers for %v", n.nodeName)
+	Debug("Fetching peers in mesh peers for pubsubTopic: %v, node: %v", pubsubTopic, n.nodeName)
 
 	wg := sync.WaitGroup{}
 	var resp = C.allocResp(unsafe.Pointer(&wg))
@@ -1294,7 +1294,7 @@ func (n *WakuNode) GetNumConnectedPeers() (int, error) {
 
 	peers, err := n.GetConnectedPeers()
 	if err != nil {
-		Error("Failed to fetch connected peers for %v %v ", n.nodeName, err)
+		Error("Failed to fetch connected peers for %v: %v ", n.nodeName, err)
 		return 0, err
 	}
 

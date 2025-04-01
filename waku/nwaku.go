@@ -223,6 +223,10 @@ package waku
 		waku_ping_peer(ctx, peerAddr, timeoutMs, (WakuCallBack) GoCallback, resp);
 	}
 
+	static void cGoWakuGetPeersInMesh(void* ctx, char* pubSubTopic, void* resp) {
+		waku_relay_get_peers_in_mesh(ctx, pubSubTopic, (WakuCallBack) GoCallback, resp);
+	}
+
 	static void cGoWakuGetNumPeersInMesh(void* ctx, char* pubSubTopic, void* resp) {
 		waku_relay_get_num_peers_in_mesh(ctx, pubSubTopic, (WakuCallBack) GoCallback, resp);
 	}
@@ -586,6 +590,54 @@ func (n *WakuNode) GetConnectedPeers() (peer.IDSlice, error) {
 		}
 
 		Debug("Successfully fetched connected peers for %v, count: %v", n.nodeName, len(peers))
+		return peers, nil
+	}
+
+	errMsg := "error GetConnectedPeers: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	Error("Failed to get connected peers for %v: %v", n.nodeName, errMsg)
+
+	return nil, errors.New(errMsg)
+}
+
+func (n *WakuNode) GetPeersInMesh(pubsubTopic string) (peer.IDSlice, error) {
+	if n == nil {
+		err := errors.New("waku node is nil")
+		Error("Failed to get peers in mesh %v", err)
+		return nil, err
+	}
+
+	Debug("Fetching connected peers for %v", n.nodeName)
+
+	wg := sync.WaitGroup{}
+	var resp = C.allocResp(unsafe.Pointer(&wg))
+	defer C.freeResp(resp)
+
+	var cPubsubTopic = C.CString(pubsubTopic)
+	defer C.free(unsafe.Pointer(cPubsubTopic))
+
+	wg.Add(1)
+	C.cGoWakuGetPeersInMesh(n.wakuCtx, cPubsubTopic, resp)
+	wg.Wait()
+
+	if C.getRet(resp) == C.RET_OK {
+		peersStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+		if peersStr == "" {
+			Debug("No peers in mesh found for pubsubTopic: %v, node: %v", pubsubTopic, n.nodeName)
+			return nil, nil
+		}
+
+		peerIDs := strings.Split(peersStr, ",")
+		var peers peer.IDSlice
+		for _, peerID := range peerIDs {
+			id, err := peer.Decode(peerID)
+			if err != nil {
+				Error("Failed to decode peer ID for %v: %v", n.nodeName, err)
+				return nil, err
+			}
+			peers = append(peers, id)
+		}
+
+		Debug("Successfully fetched mesh peers for pubsubTopic: %v, node: %v count: %v", pubsubTopic, n.nodeName, len(peers))
 		return peers, nil
 	}
 

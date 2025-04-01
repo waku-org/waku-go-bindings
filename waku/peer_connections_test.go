@@ -163,8 +163,6 @@ func TestDiscv5PeerMeshCount(t *testing.T) {
 	node2, err := StartWakuNode("Node2", &node2Config)
 	require.NoError(t, err, "Failed to start Node2")
 
-	require.NoError(t, err, "Failed to get ENR for Node2")
-
 	node3Config := DefaultWakuConfig
 	node3Config.Discv5BootstrapNodes = []string{enrNode1.String()}
 	node3Config.Relay = true
@@ -208,6 +206,81 @@ func TestDiscv5PeerMeshCount(t *testing.T) {
 
 	Debug("Total number of peers in mesh for Node1 after stopping Node3: %d", peerCountAfter)
 	require.Equal(t, 1, peerCountAfter, "Expected Node1 to have exactly 1 peer in the mesh after stopping Node3")
+
+	Debug("Test successfully verified peer count change after stopping Node3")
+}
+
+func TestDiscv5PeerMeshIds(t *testing.T) {
+	Debug("Starting test to verify peers in mesh using Discv5 after topic subscription")
+
+	node1Config := DefaultWakuConfig
+	node1Config.Relay = true
+	Debug("Creating Node1")
+	node1, err := StartWakuNode("Node1", &node1Config)
+	require.NoError(t, err, "Failed to start Node1")
+
+	enrNode1, err := node1.ENR()
+	require.NoError(t, err, "Failed to get ENR for Node1")
+
+	node2Config := DefaultWakuConfig
+	node2Config.Discv5BootstrapNodes = []string{enrNode1.String()}
+	node2Config.Relay = true
+	Debug("Creating Node2 with Node1 as Discv5 bootstrap")
+	node2, err := StartWakuNode("Node2", &node2Config)
+	require.NoError(t, err, "Failed to start Node2")
+
+	node2PeerID, err := node2.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 2")
+
+	node3Config := DefaultWakuConfig
+	node3Config.Discv5BootstrapNodes = []string{enrNode1.String()}
+	node3Config.Relay = true
+
+	Debug("Creating Node3 with Node2 as Discv5 bootstrap")
+	node3, err := StartWakuNode("Node3", &node3Config)
+	require.NoError(t, err, "Failed to start Node3")
+
+	node3PeerID, err := node3.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 3")
+
+	defer func() {
+		Debug("Stopping and destroying all Waku nodes")
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+	}()
+
+	defaultPubsubTopic := DefaultPubsubTopic
+	Debug("Default pubsub topic retrieved: %s", defaultPubsubTopic)
+
+	err = SubscribeNodesToTopic([]*WakuNode{node1, node2, node3}, defaultPubsubTopic)
+	require.NoError(t, err, "Failed to subscribe all nodes to the topic")
+
+	Debug("Waiting for nodes to auto-connect via Discv5")
+	err = WaitForAutoConnection([]*WakuNode{node1, node2, node3})
+	require.NoError(t, err, "Nodes did not auto-connect within timeout")
+
+	Debug("Fetching number of peers in mesh for Node1 before stopping Node3")
+	peersBefore, err := node1.GetPeersInMesh(defaultPubsubTopic)
+	require.NoError(t, err, "Failed to get number of peers in mesh for Node1 before stopping Node3")
+
+	Debug("Total number of peers in mesh for Node1 before stopping Node3: %d", len(peersBefore))
+	require.Equal(t, 2, len(peersBefore), "Expected Node1 to have exactly 2 peers in the mesh before stopping Node3")
+	require.True(t, slices.Contains(peersBefore, node2PeerID), "Node 2 should be included in node 1's mesh")
+	require.True(t, slices.Contains(peersBefore, node3PeerID), "Node 3 should be included in node 1's mesh")
+
+	Debug("Stopping Node3")
+	node3.StopAndDestroy()
+
+	Debug("Waiting for network update after Node3 stops")
+	time.Sleep(10 * time.Second)
+
+	Debug("Fetching number of peers in mesh for Node1 after stopping Node3")
+	peersAfter, err := node1.GetPeersInMesh(defaultPubsubTopic)
+	require.NoError(t, err, "Failed to get number of peers in mesh for Node1 after stopping Node3")
+
+	Debug("Total number of peers in mesh for Node1 after stopping Node3: %d", len(peersAfter))
+	require.Equal(t, 1, len(peersAfter), "Expected Node1 to have exactly 1 peer in the mesh after stopping Node3")
+	require.True(t, slices.Contains(peersBefore, node2PeerID), "Node 2 should be included in node 1's mesh")
 
 	Debug("Test successfully verified peer count change after stopping Node3")
 }

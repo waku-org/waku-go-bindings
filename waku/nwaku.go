@@ -641,8 +641,8 @@ func (n *WakuNode) GetPeersInMesh(pubsubTopic string) (peer.IDSlice, error) {
 		return peers, nil
 	}
 
-	errMsg := "error GetConnectedPeers: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
-	Error("Failed to get connected peers for %v: %v", n.nodeName, errMsg)
+	errMsg := "error GetPeersInMesh: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	Error("Failed to get peers in mesh for pubsubTopic: %v:, node: %v. %v", pubsubTopic, n.nodeName, errMsg)
 
 	return nil, errors.New(errMsg)
 }

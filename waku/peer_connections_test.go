@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/waku-org/waku-go-bindings/waku/common"
 )
 
 // Test node connect & disconnect peers
@@ -144,7 +145,7 @@ func TestConnectUsingMultipleStaticPeers(t *testing.T) {
 	Debug("Test passed: multiple nodes connected to a single node using Static Peers")
 }
 
-func TestPeerData(t *testing.T) {
+func TestConnectedPeersInfo(t *testing.T) {
 	Debug("Starting TestPeerData")
 
 	node1, err := StartWakuNode("node1", nil)
@@ -195,9 +196,21 @@ func TestPeerData(t *testing.T) {
 	require.True(t, slices.Contains(connectedPeers, node2PeerID), "Node 2 should be a peer of Node 4")
 	require.True(t, slices.Contains(connectedPeers, node3PeerID), "Node 3 should be a peer of Node 4")
 
-	node4.GetConnectedPeersInfo()
+	peersInfo, err := node4.GetConnectedPeersInfo()
+	require.NoError(t, err, "Failed to get node 4's connected peers info")
 
-	Debug("Test passed: multiple nodes connected to a single node using Static Peers")
+	require.Equal(t, len(peersInfo), 3, "Expected Node 4's connected peers info to have 3 entries")
+
+	node1DerivedAddr := common.EncapsulatePeerID(node1PeerID, peersInfo[node1PeerID].Addresses...)
+	require.Equal(t, node1DerivedAddr, addr1, "Expected Node1's derived address to equal its listen address")
+
+	node2DerivedAddr := common.EncapsulatePeerID(node2PeerID, peersInfo[node2PeerID].Addresses...)
+	require.Equal(t, node2DerivedAddr, addr2, "Expected Node2's derived address to equal its listen address")
+
+	node3DerivedAddr := common.EncapsulatePeerID(node3PeerID, peersInfo[node3PeerID].Addresses...)
+	require.Equal(t, node3DerivedAddr, addr3, "Expected Node3's derived address to equal its listen address")
+
+	Debug("Test passed: peersInfoData is correct")
 }
 
 func TestDiscv5PeerMeshCount(t *testing.T) {

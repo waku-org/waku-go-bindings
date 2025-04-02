@@ -31,3 +31,21 @@ Follow these steps to install and set up the module:
    ```
 
 Now the module is ready for use in your project.
+
+### Note
+
+In order to easily build the libwaku library on demand, it is recommended to add the following target in your project's Makefile:
+
+```
+LIBWAKU_DEP_PATH=$(shell go list -m -f '{{.Dir}}' github.com/waku-org/waku-go-bindings)
+
+buildlib:
+   cd $(LIBWAKU_DEP_PATH) &&\
+   sudo mkdir -p third_party &&\
+   sudo chown $(USER) third_party &&\
+   make -C waku
+```
+
+## Example Usage
+
+For an example on how to use this package, please take a look at our [example-go-bindings](https://github.com/gabrielmer/example-waku-go-bindings) repo

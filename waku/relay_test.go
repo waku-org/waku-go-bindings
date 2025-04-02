@@ -300,7 +300,7 @@ func TestRelaySubscribeAndPeerCountChange(t *testing.T) {
 	node3Config.Relay = true
 	node3Config.Staticnodes = []string{node1Address[0].String()}
 
-	Debug("Creating Node3 with Node2 as a static node")
+	Debug("Creating Node3 with Node1 as a static node")
 	node3, err := StartWakuNode("Node3", &node3Config)
 	require.NoError(t, err, "Failed to start Node3")
 

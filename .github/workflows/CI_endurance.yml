@@ -1,8 +1,7 @@
 name: Endurance Tests
 
 on:
-  push:
-    branches: [ "stress_test" ]
+  workflow_dispatch:
 
 jobs:
   endurance1:

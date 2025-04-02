@@ -1,8 +1,9 @@
-name: Endurance Tests
+name: Bindings Tests
 
 on:
-  push:
-    branches: [ "stress_test" ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
 
 jobs:
   endurance:

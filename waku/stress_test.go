@@ -73,7 +73,6 @@ func TestStressMemoryUsageForThreeNodes(t *testing.T) {
 func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 	Debug("Starting test")
 	runtime.GC()
-	time.Sleep(5 * time.Second)
 	nodeConfig := DefaultWakuConfig
 	nodeConfig.Relay = true
 	nodeConfig.Store = true

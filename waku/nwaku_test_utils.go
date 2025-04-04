@@ -155,10 +155,6 @@ func (n *WakuNode) VerifyMessageReceived(expectedMessage *pb.WakuMessage, expect
 
 	select {
 	case envelope := <-n.MsgChan:
-		if envelope == nil {
-			Error("Received envelope is nil on node %s", n.nodeName)
-			return errors.New("received envelope is nil")
-		}
 		if string(expectedMessage.Payload) != string(envelope.Message().Payload) {
 			Error("Payload does not match on node %s", n.nodeName)
 			return errors.New("payload does not match")

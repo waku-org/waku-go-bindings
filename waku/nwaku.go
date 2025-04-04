@@ -484,7 +484,7 @@ func (n *WakuNode) parseMessageEvent(eventStr string) {
 	if err != nil {
 		Error("could not parse message %v", err)
 	}
-	n.MsgChan <- envelope
+	n.MsgChan <- *envelope
 }
 
 func (n *WakuNode) parseTopicHealthChangeEvent(eventStr string) {

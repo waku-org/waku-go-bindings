@@ -247,6 +247,10 @@ package waku
 		waku_get_peerids_from_peerstore(wakuCtx, (WakuCallBack) GoCallback, resp);
 	}
 
+	static void cGoWakuGetConnectedPeersInfo(void* wakuCtx, void* resp) {
+		waku_get_connected_peers_info(wakuCtx, (WakuCallBack) GoCallback, resp);
+	}
+
 	static void cGoWakuLightpushPublish(void* wakuCtx,
 					const char* pubSubTopic,
 					const char* jsonWakuMessage,
@@ -1284,6 +1288,33 @@ func (n *WakuNode) GetPeerIDsFromPeerStore() (peer.IDSlice, error) {
 	}
 	errMsg := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
 	return nil, fmt.Errorf("GetPeerIdsFromPeerStore: %s", errMsg)
+}
+
+func (n *WakuNode) GetConnectedPeersInfo() (common.PeersData, error) {
+	wg := sync.WaitGroup{}
+
+	var resp = C.allocResp(unsafe.Pointer(&wg))
+	defer C.freeResp(resp)
+
+	wg.Add(1)
+	C.cGoWakuGetConnectedPeersInfo(n.wakuCtx, resp)
+	wg.Wait()
+	if C.getRet(resp) == C.RET_OK {
+		jsonStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+		if jsonStr == "" {
+			return nil, nil
+		}
+
+		peerData, err := common.ParsePeerInfoFromJSON(jsonStr)
+
+		if err != nil {
+			return nil, fmt.Errorf("GetConnectedPeersInfo - failed parsing JSON: %w", err)
+		}
+
+		return peerData, nil
+	}
+	errMsg := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	return nil, fmt.Errorf("GetConnectedPeersInfo: %s", errMsg)
 }
 
 func (n *WakuNode) GetPeerIDsByProtocol(protocol libp2pproto.ID) (peer.IDSlice, error) {

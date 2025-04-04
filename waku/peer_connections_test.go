@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/waku-org/waku-go-bindings/waku/common"
 )
 
 // Test node connect & disconnect peers
@@ -142,6 +143,74 @@ func TestConnectUsingMultipleStaticPeers(t *testing.T) {
 	require.True(t, slices.Contains(connectedPeers, node3PeerID), "Node 3 should be a peer of Node 4")
 
 	Debug("Test passed: multiple nodes connected to a single node using Static Peers")
+}
+
+func TestConnectedPeersInfo(t *testing.T) {
+	Debug("Starting TestPeerData")
+
+	node1, err := StartWakuNode("node1", nil)
+	require.NoError(t, err, "Failed to start Node 1")
+
+	node2, err := StartWakuNode("node2", nil)
+	require.NoError(t, err, "Failed to start Node 2")
+
+	node3, err := StartWakuNode("node3", nil)
+	require.NoError(t, err, "Failed to start Node 3")
+
+	addr1, err := node1.ListenAddresses()
+	require.NoError(t, err, "Failed to get listen addresses for Node 1")
+
+	addr2, err := node2.ListenAddresses()
+	require.NoError(t, err, "Failed to get listen addresses for Node 2")
+
+	addr3, err := node3.ListenAddresses()
+	require.NoError(t, err, "Failed to get listen addresses for Node 3")
+
+	node4Config := DefaultWakuConfig
+	node4Config.Discv5Discovery = false
+	node4Config.Staticnodes = []string{addr1[0].String(), addr2[0].String(), addr3[0].String()}
+
+	node4, err := StartWakuNode("node4", &node4Config)
+	require.NoError(t, err, "Failed to start Node 4")
+
+	defer func() {
+		Debug("Stopping and destroying all Waku nodes")
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+		node3.StopAndDestroy()
+		node4.StopAndDestroy()
+	}()
+
+	Debug("Verifying connected peers for Node 4")
+	connectedPeers, err := node4.GetConnectedPeers()
+	require.NoError(t, err, "Failed to get connected peers for Node 4")
+
+	node1PeerID, err := node1.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 1")
+	node2PeerID, err := node2.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 2")
+	node3PeerID, err := node3.PeerID()
+	require.NoError(t, err, "Failed to get PeerID for Node 3")
+
+	require.True(t, slices.Contains(connectedPeers, node1PeerID), "Node 1 should be a peer of Node 4")
+	require.True(t, slices.Contains(connectedPeers, node2PeerID), "Node 2 should be a peer of Node 4")
+	require.True(t, slices.Contains(connectedPeers, node3PeerID), "Node 3 should be a peer of Node 4")
+
+	peersInfo, err := node4.GetConnectedPeersInfo()
+	require.NoError(t, err, "Failed to get node 4's connected peers info")
+
+	require.Equal(t, len(peersInfo), 3, "Expected Node 4's connected peers info to have 3 entries")
+
+	node1DerivedAddr := common.EncapsulatePeerID(node1PeerID, peersInfo[node1PeerID].Addresses...)
+	require.Equal(t, node1DerivedAddr, addr1, "Expected Node1's derived address to equal its listen address")
+
+	node2DerivedAddr := common.EncapsulatePeerID(node2PeerID, peersInfo[node2PeerID].Addresses...)
+	require.Equal(t, node2DerivedAddr, addr2, "Expected Node2's derived address to equal its listen address")
+
+	node3DerivedAddr := common.EncapsulatePeerID(node3PeerID, peersInfo[node3PeerID].Addresses...)
+	require.Equal(t, node3DerivedAddr, addr3, "Expected Node3's derived address to equal its listen address")
+
+	Debug("Test passed: peersInfoData is correct")
 }
 
 func TestDiscv5PeerMeshCount(t *testing.T) {

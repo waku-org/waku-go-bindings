@@ -17,6 +17,25 @@ type PeerInfo struct {
 }
 
 func ParsePeerInfoFromJSON(jsonStr string) (PeersData, error) {
+	/*
+		We expect a JSON string with the format:
+
+			{
+				<peerId1>: {
+				  "protocols": [
+					"protocol1",
+					"protocol2",
+					 ...
+				  ],
+				  "addresses": [
+					"address1",
+					"address2",
+					...
+				  ]
+				},
+				<peerId2>: ...
+			}
+	*/
 	// Create a temporary map to unmarshal the JSON data
 	var rawMap map[string]struct {
 		Protocols []string `json:"protocols"`

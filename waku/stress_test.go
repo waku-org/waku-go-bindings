@@ -314,6 +314,7 @@ func TestStressRandomNodesInMesh(t *testing.T) {
 	require.NoError(t, err3, "Failed to read final RSS")
 	Debug("Memory at end of test: HeapAlloc=%d KB, RSS=%d KB", endHeapKB, endRSSKB)
 }
+
 func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	nodePubCfg := DefaultWakuConfig
 	nodePubCfg.Relay = true
@@ -342,28 +343,29 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	require.NoError(t, err)
 	Debug("Before endurance test: HeapAlloc = %d KB, RSS = %d KB", startHeapKB, startRSSKB)
 
+	maxIterations := 2000
 	payloadSize := 100 * 1024
 	largePayload := make([]byte, payloadSize)
 	for i := range largePayload {
 		largePayload[i] = 'a'
 	}
 
-	duration := 30 * time.Minute
-	endTime := time.Now().Add(duration)
 	var publishedMessages int
-	for time.Now().Before(endTime) {
+	for i := 0; i < maxIterations; i++ {
 		msg := publisher.CreateMessage()
 		msg.Payload = largePayload
 		ephemeral := true
 		msg.Ephemeral = &ephemeral
+
 		_, err := publisher.RelayPublishNoCTX(DefaultPubsubTopic, msg)
 		if err == nil {
 			publishedMessages++
 		} else {
 			Error("Error publishing ephemeral message: %v", err)
 		}
+
 		time.Sleep(1 * time.Second)
-		Debug("###Iteration number %d", publishedMessages)
+		Debug("###Iteration number %d", i+1)
 	}
 
 	runtime.ReadMemStats(&memStats)

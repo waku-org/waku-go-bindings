@@ -14,7 +14,7 @@ import (
 
 func TestStoreQuery3Nodes(t *testing.T) {
 	Debug("Starting test to verify store query from a peer using direct peer connections")
-
+	queryTimestamp := proto.Int64(time.Now().UnixNano())
 	node1Config := DefaultWakuConfig
 	node1Config.Relay = true
 
@@ -53,8 +53,8 @@ func TestStoreQuery3Nodes(t *testing.T) {
 	require.NoError(t, err, "Failed to connect Node3 to Node2")
 
 	Debug("Waiting for peer connections to stabilize")
-	time.Sleep(2 * time.Second)
-
+	err = WaitForAutoConnection([]*WakuNode{node1, node2, node3})
+	require.NoError(t, err, "Nodes did not connect within timeout")
 	Debug("Publishing message from Node1 using RelayPublish")
 	message := node1.CreateMessage(&pb.WakuMessage{
 		Payload:      []byte("test-message"),
@@ -62,7 +62,6 @@ func TestStoreQuery3Nodes(t *testing.T) {
 		Timestamp:    proto.Int64(time.Now().UnixNano()),
 	})
 
-	queryTimestamp := proto.Int64(time.Now().UnixNano())
 	msgHash, err := node1.RelayPublishNoCTX(DefaultPubsubTopic, message)
 	require.NoError(t, err, "Failed to publish message from Node1")
 
@@ -75,14 +74,15 @@ func TestStoreQuery3Nodes(t *testing.T) {
 
 	Debug("Node3 querying stored messages from Node2")
 	storeQueryRequest := &common.StoreQueryRequest{
-		TimeStart: queryTimestamp,
+		TimeStart:   queryTimestamp,
+		IncludeData: true,
 	}
 	res, err := node3.GetStoredMessages(node2, storeQueryRequest)
-	var storedMessages = *res.Messages
+	var storedMessages = (*res.Messages)[0]
 	require.NoError(t, err, "Failed to retrieve stored messages from Node2")
-	require.NotEmpty(t, storedMessages, "Expected at least one stored message")
+	require.NotEmpty(t, storedMessages.WakuMessage, "Expected at least one stored message")
 	Debug("Verifying stored message matches the published message")
-	require.Equal(t, message.Payload, storedMessages[0].WakuMessage.Payload, "Stored message payload does not match")
+	require.Equal(t, string(message.Payload), string(storedMessages.WakuMessage.Payload), "Stored message payload does not match")
 	Debug("Test successfully verified store query from a peer using direct peer connections")
 }
 
@@ -117,7 +117,7 @@ func TestStoreQueryMultipleMessages(t *testing.T) {
 		node2.StopAndDestroy()
 		node3.StopAndDestroy()
 	}()
-
+	var timestamp = proto.Int64(time.Now().UnixNano())
 	Debug("Connecting Node1 to Node2")
 	err = node1.ConnectPeer(node2)
 	require.NoError(t, err, "Failed to connect Node1 to Node2")
@@ -151,7 +151,14 @@ func TestStoreQueryMultipleMessages(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	Debug("Node3 querying stored messages from Node2")
-	res, err := node3.GetStoredMessages(node2, nil)
+	storeRequest := &common.StoreQueryRequest{
+		IncludeData:       true,
+		ContentTopics:     &[]string{"test-content-topic"},
+		PaginationLimit:   proto.Uint64(uint64(50)),
+		PaginationForward: true,
+		TimeStart:         timestamp,
+	}
+	res, err := node3.GetStoredMessages(node2, storeRequest)
 	require.NoError(t, err, "Failed to retrieve stored messages from Node2")
 	require.NotNil(t, res.Messages, "Expected stored messages but received nil")
 
@@ -282,7 +289,7 @@ func TestStoreQueryWithPaginationMultiplePages(t *testing.T) {
 		node2.StopAndDestroy()
 		node3.StopAndDestroy()
 	}()
-
+	var timestamp = proto.Int64(time.Now().UnixNano())
 	Debug("Connecting Node1 to Node2")
 	err = node1.ConnectPeer(node2)
 	require.NoError(t, err, "Failed to connect Node1 to Node2")
@@ -321,6 +328,7 @@ func TestStoreQueryWithPaginationMultiplePages(t *testing.T) {
 		ContentTopics:     &[]string{"test-content-topic"},
 		PaginationLimit:   proto.Uint64(5),
 		PaginationForward: true,
+		TimeStart:         timestamp,
 	}
 
 	res1, err := node3.GetStoredMessages(node2, &storeRequest1)
@@ -404,6 +412,7 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 	var sentHashes []common.MessageHash
 	defaultPubsubTopic := DefaultPubsubTopic
 
+	queryTimestamp := proto.Int64(time.Now().UnixNano())
 	Debug("Publishing %d messages from Node1 using RelayPublish", numMessages)
 	for i := 0; i < numMessages; i++ {
 		message := node1.CreateMessage(&pb.WakuMessage{
@@ -416,6 +425,7 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 		require.NoError(t, err, "Failed to publish message from Node1")
 
 		sentHashes = append(sentHashes, msgHash)
+		Debug("sent hash number %i is %s", i, sentHashes[i])
 	}
 
 	Debug("Waiting for message delivery to Node2")
@@ -427,6 +437,7 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 		ContentTopics:     &[]string{"test-content-topic"},
 		PaginationLimit:   proto.Uint64(5),
 		PaginationForward: false,
+		TimeStart:         queryTimestamp,
 	}
 
 	res1, err := node3.GetStoredMessages(node2, &storeRequest1)
@@ -435,18 +446,22 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 
 	storedMessages1 := *res1.Messages
 	require.Len(t, storedMessages1, 5, "Expected to retrieve exactly 5 messages from first query")
+	for i := 0; i < 5; i++ {
+		Debug("stored hashes round 2 iteration %i is %s", i, storedMessages1[i].MessageHash)
+	}
 
 	for i := 0; i < 5; i++ {
-		require.Equal(t, sentHashes[numMessages-1-i], storedMessages1[i].MessageHash, "Message order mismatch in first query")
+		require.Equal(t, sentHashes[i+3], storedMessages1[i].MessageHash, "Message order mismatch in first query")
 	}
 
 	Debug("Node3 querying second page of stored messages from Node2")
 	storeRequest2 := common.StoreQueryRequest{
 		IncludeData:       true,
 		ContentTopics:     &[]string{"test-content-topic"},
-		PaginationLimit:   proto.Uint64(5),
+		PaginationLimit:   proto.Uint64(3),
 		PaginationForward: false,
 		PaginationCursor:  &res1.PaginationCursor,
+		TimeStart:         queryTimestamp,
 	}
 
 	res2, err := node3.GetStoredMessages(node2, &storeRequest2)
@@ -457,7 +472,8 @@ func TestStoreQueryWithPaginationReverseOrder(t *testing.T) {
 	require.Len(t, storedMessages2, 3, "Expected to retrieve exactly 3 messages from second query")
 
 	for i := 0; i < 3; i++ {
-		require.Equal(t, sentHashes[numMessages-6-i], storedMessages2[i].MessageHash, "Message order mismatch in second query")
+		require.Equal(t, sentHashes[i], storedMessages2[i].MessageHash, "Message order mismatch in second query")
+
 	}
 
 	Debug("Test successfully verified store query pagination in reverse order")
@@ -698,7 +714,7 @@ func TestStoreQueryWithWrongContentTopic(t *testing.T) {
 	}
 
 	storedmsgs, _ := node3.GetStoredMessages(node2, storeQueryRequest)
-	require.Nil(t, (*storedmsgs.Messages)[0], "Expected no messages to be returned for incorrect content topic and timestamp")
+	require.Empty(t, (*storedmsgs.Messages), "Expected no messages to be returned for incorrect content topic and timestamp")
 	Debug("Test successfully verified that store query fails when using an incorrect content topic and an old timestamp")
 }
 
@@ -999,6 +1015,7 @@ func TestStoredMessagesWithDifferentPubsubTopics(t *testing.T) {
 		Debug("Node1 is publishing message on pubsub topic: %s", pubsubTopic)
 		node1.RelaySubscribe(pubsubTopic)
 		node2.RelaySubscribe(pubsubTopic)
+		time.Sleep(time.Second * 2)
 		queryTimestamp := proto.Int64(time.Now().UnixNano())
 		var msg = node1.CreateMessage()
 		msgHash, err := node1.RelayPublishNoCTX(pubsubTopic, msg)

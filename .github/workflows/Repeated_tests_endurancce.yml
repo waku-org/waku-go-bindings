@@ -1,0 +1,58 @@
+name: Repeated Test Suite
+
+on:
+  workflow_dispatch:
+ 
+jobs:
+  repeated-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Initialize & update submodules
+        run: git submodule update --init --recursive
+
+      - name: Prepare third_party directory
+        run: |
+          sudo mkdir -p third_party
+          sudo chown $USER third_party
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Build nwaku dependencies
+        run: make -C waku
+
+      - name: Clean environment
+        run: go clean -cache
+
+      - name: Initialize CSV
+        run: echo "TestName,Iteration,Phase,HeapAlloc(KB),RSS(KB),Timestamp" > memory_metrics.csv
+
+      - name: Repeated test runs
+        run: |
+          set +e
+          for i in {1..100}; do
+            echo "Iteration $i: measuring memory BEFORE the tests..."
+            go run tools/memory_record.go --iteration $i --phase start
+            echo "Running tests (iteration $i)..."
+            go test -v -tags '!stress' ./...
+            echo "Iteration $i: measuring memory AFTER the tests..."
+            go run tools/memory_record.go --iteration $i --phase end
+          done
+          set -e
+
+      - name: Upload memory_metrics.csv
+        uses: actions/upload-artifact@v4
+        with:
+          name: memory_metrics
+          path: memory_metrics.csv

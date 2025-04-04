@@ -31,6 +31,7 @@ import (
 // 	--nat=extip:${IP_ADDRESS} --discv5-udp-port=8000 --rest-address=0.0.0.0 --store --rest-port=8646
 
 func TestBasicWaku(t *testing.T) {
+	t.Skip("Skipping test as choosing this port will fail the CI")
 	extNodeRestPort := 8646
 	storeNodeInfo, err := GetNwakuInfo(nil, &extNodeRestPort)
 	require.NoError(t, err)

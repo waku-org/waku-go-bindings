@@ -1,0 +1,48 @@
+name: Bindings Tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  endurance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Initialize & update submodules
+        run: git submodule update --init --recursive
+
+      - name: Prepare third_party directory
+        run: |
+          sudo mkdir -p third_party
+          sudo chown $USER third_party
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Build nwaku dependencies
+        run: make -C waku
+
+      - name: Increase ulimit
+        run: sudo sh -c "ulimit -n 8192"  
+
+      - name: Run Endurance Test
+        run: |
+          go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(?!TestStress).*' | tee testlogs.log
+
+      - name: Upload Test Logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: endurance-logs
+          path: testlogs.log

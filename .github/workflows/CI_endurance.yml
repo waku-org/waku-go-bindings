@@ -1,0 +1,87 @@
+name: Endurance Tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  endurance1:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Initialize & update submodules
+        run: git submodule update --init --recursive
+
+      - name: Prepare third_party directory
+        run: |
+          sudo mkdir -p third_party
+          sudo chown $USER third_party
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Build nwaku dependencies
+        run: make -C waku
+
+      - name: Increase ulimit
+        run: sudo sh -c "ulimit -n 8192"
+
+      - name: Run Endurance Test (Group 1)
+        run: |
+          go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(TestStressMemoryUsageForThreeNodes|TestStressStoreQuery5kMessagesWithPagination|TestStressHighThroughput10kPublish|TestStressConnectDisconnect500Iteration)$' | tee testlogs1.log
+
+      - name: Upload Test Logs (Group 1)
+        uses: actions/upload-artifact@v4
+        with:
+          name: endurance-logs-group1
+          path: testlogs1.log
+
+  endurance2:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Initialize & update submodules
+        run: git submodule update --init --recursive
+
+      - name: Prepare third_party directory
+        run: |
+          sudo mkdir -p third_party
+          sudo chown $USER third_party
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Build nwaku dependencies
+        run: make -C waku
+
+      - name: Increase ulimit
+        run: sudo sh -c "ulimit -n 8192"
+
+      - name: Run Endurance Test (Group 2)
+        run: |
+          go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(TestStressRandomNodesInMesh|TestStressLargePayloadEphemeralMessagesEndurance|TestStress2Nodes500IterationTearDown|TestPeerExchangePXLoad)$' | tee testlogs2.log
+
+      - name: Upload Test Logs (Group 2)
+        uses: actions/upload-artifact@v4
+        with:
+          name: endurance-logs-group2
+          path: testlogs2.log

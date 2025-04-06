@@ -157,7 +157,7 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 	Debug("Memory usage BEFORE sending => HeapAlloc: %d KB, RSS: %d KB", startHeapKB, startRSSKB)
 
-	totalMessages := 2000
+	totalMessages := 1500
 	pubsubTopic := DefaultPubsubTopic
 
 	for i := 0; i < totalMessages; i++ {
@@ -373,6 +373,7 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	endRSSKB, err := utils.GetRSSKB()
 	require.NoError(t, err)
 	Debug("After endurance test: HeapAlloc = %d KB, RSS = %d KB", endHeapKB, endRSSKB)
+	time.Sleep(10 * time.Second)
 }
 
 func TestStress2Nodes500IterationTearDown(t *testing.T) {

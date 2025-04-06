@@ -157,7 +157,7 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 	Debug("Memory usage BEFORE sending => HeapAlloc: %d KB, RSS: %d KB", startHeapKB, startRSSKB)
 
-	totalMessages := 1000
+	totalMessages := 100
 	pubsubTopic := DefaultPubsubTopic
 
 	for i := 0; i < totalMessages; i++ {

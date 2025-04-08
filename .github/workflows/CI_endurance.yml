@@ -78,7 +78,7 @@ jobs:
 
       - name: Run Endurance Test (Group 2)
         run: |
-          go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(TestStressRandomNodesInMesh|TestStress2Nodes500IterationTearDown|TestPeerExchangePXLoad)$' | tee testlogs2.log
+          go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(TestStressRandomNodesInMesh|TestStress2Nodes500IterationTearDown|TestPeerExchangePXLoad|TestStressHighThroughput10kPublish)$' | tee testlogs2.log
 
       - name: Upload Test Logs (Group 2)
         uses: actions/upload-artifact@v4

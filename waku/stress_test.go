@@ -157,7 +157,7 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 	Debug("Memory usage BEFORE sending => HeapAlloc: %d KB, RSS: %d KB", startHeapKB, startRSSKB)
 
-	totalMessages := 1000
+	totalMessages := 1100
 	pubsubTopic := DefaultPubsubTopic
 
 	for i := 0; i < totalMessages; i++ {
@@ -347,7 +347,7 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	require.NoError(t, err)
 	Debug("Before endurance test: HeapAlloc = %d KB, RSS = %d KB", startHeapKB, startRSSKB)
 
-	maxIterations := 1000
+	maxIterations := 1100
 	payloadSize := 100 * 1024
 	largePayload := make([]byte, payloadSize)
 	for i := range largePayload {

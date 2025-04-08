@@ -14,9 +14,9 @@ type StoreQueryRequest struct {
 }
 
 type StoreMessageResponse struct {
-	WakuMessage *tmpWakuMessageJson `json:"message"`
-	PubsubTopic string              `json:"pubsubTopic"`
-	MessageHash MessageHash         `json:"messageHash"`
+	WakuMessage *wakuMessage `json:"message"`
+	PubsubTopic string       `json:"pubsubTopic"`
+	MessageHash MessageHash  `json:"messageHash"`
 }
 
 type StoreQueryResponse struct {

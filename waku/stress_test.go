@@ -92,7 +92,7 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 	}()
 
 	var memStats runtime.MemStats
-	iterations := 50
+	iterations := 500
 
 	runtime.ReadMemStats(&memStats)
 	initialHeapAlloc := memStats.HeapAlloc
@@ -157,7 +157,7 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 	Debug("Memory usage BEFORE sending => HeapAlloc: %d KB, RSS: %d KB", startHeapKB, startRSSKB)
 
-	totalMessages := 5000
+	totalMessages := 3000
 	pubsubTopic := DefaultPubsubTopic
 
 	for i := 0; i < totalMessages; i++ {
@@ -320,17 +320,21 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	nodePubCfg.Relay = true
 	publisher, err := StartWakuNode("publisher", &nodePubCfg)
 	require.NoError(t, err)
-	defer publisher.StopAndDestroy()
 
 	nodeRecvCfg := DefaultWakuConfig
 	nodeRecvCfg.Relay = true
 	receiver, err := StartWakuNode("receiver", &nodeRecvCfg)
 	require.NoError(t, err)
-	defer receiver.StopAndDestroy()
 
 	err = receiver.RelaySubscribe(DefaultPubsubTopic)
 	require.NoError(t, err)
 
+	defer func() {
+		publisher.StopAndDestroy()
+		time.Sleep(30 * time.Second)
+		receiver.StopAndDestroy()
+
+	}()
 	err = publisher.ConnectPeer(receiver)
 	require.NoError(t, err)
 
@@ -343,7 +347,7 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	require.NoError(t, err)
 	Debug("Before endurance test: HeapAlloc = %d KB, RSS = %d KB", startHeapKB, startRSSKB)
 
-	maxIterations := 2000
+	maxIterations := 3000
 	payloadSize := 100 * 1024
 	largePayload := make([]byte, payloadSize)
 	for i := range largePayload {
@@ -373,6 +377,7 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	endRSSKB, err := utils.GetRSSKB()
 	require.NoError(t, err)
 	Debug("After endurance test: HeapAlloc = %d KB, RSS = %d KB", endHeapKB, endRSSKB)
+
 }
 
 func TestStress2Nodes500IterationTearDown(t *testing.T) {

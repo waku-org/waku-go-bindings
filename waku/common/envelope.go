@@ -15,7 +15,7 @@ type Envelope struct {
 	hash  MessageHash
 }
 
-type nwakuMessage struct {
+type wakuMessage struct {
 	Payload        []byte  `json:"payload,omitempty"`
 	ContentTopic   string  `json:"contentTopic,omitempty"`
 	Version        *uint32 `json:"version,omitempty"`
@@ -25,32 +25,32 @@ type nwakuMessage struct {
 	RateLimitProof []byte  `json:"proof,omitempty"`
 }
 
-type nwakuEnvelope struct {
-	WakuMessage nwakuMessage `json:"wakuMessage"`
-	PubsubTopic string       `json:"pubsubTopic"`
-	MessageHash MessageHash  `json:"messageHash"`
+type wakuEnvelope struct {
+	WakuMessage wakuMessage `json:"wakuMessage"`
+	PubsubTopic string      `json:"pubsubTopic"`
+	MessageHash MessageHash `json:"messageHash"`
 }
 
 // NewEnvelope creates a new Envelope from a json string generated in nwaku
 func NewEnvelope(jsonEventStr string) (*Envelope, error) {
-	nwakuEnvelope := nwakuEnvelope{}
-	err := json.Unmarshal([]byte(jsonEventStr), &nwakuEnvelope)
+	wakuEnvelope := wakuEnvelope{}
+	err := json.Unmarshal([]byte(jsonEventStr), &wakuEnvelope)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Envelope{
 		msg: &pb.WakuMessage{
-			Payload:        nwakuEnvelope.WakuMessage.Payload,
-			ContentTopic:   nwakuEnvelope.WakuMessage.ContentTopic,
-			Version:        nwakuEnvelope.WakuMessage.Version,
-			Timestamp:      nwakuEnvelope.WakuMessage.Timestamp,
-			Meta:           nwakuEnvelope.WakuMessage.Meta,
-			Ephemeral:      nwakuEnvelope.WakuMessage.Ephemeral,
-			RateLimitProof: nwakuEnvelope.WakuMessage.RateLimitProof,
+			Payload:        wakuEnvelope.WakuMessage.Payload,
+			ContentTopic:   wakuEnvelope.WakuMessage.ContentTopic,
+			Version:        wakuEnvelope.WakuMessage.Version,
+			Timestamp:      wakuEnvelope.WakuMessage.Timestamp,
+			Meta:           wakuEnvelope.WakuMessage.Meta,
+			Ephemeral:      wakuEnvelope.WakuMessage.Ephemeral,
+			RateLimitProof: wakuEnvelope.WakuMessage.RateLimitProof,
 		},
-		topic: nwakuEnvelope.PubsubTopic,
-		hash:  nwakuEnvelope.MessageHash,
+		topic: wakuEnvelope.PubsubTopic,
+		hash:  wakuEnvelope.MessageHash,
 	}, nil
 }
 

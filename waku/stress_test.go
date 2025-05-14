@@ -92,7 +92,7 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 	}()
 
 	var memStats runtime.MemStats
-	iterations := 500
+	iterations := 2000
 
 	runtime.ReadMemStats(&memStats)
 	initialHeapAlloc := memStats.HeapAlloc
@@ -157,7 +157,7 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 	Debug("Memory usage BEFORE sending => HeapAlloc: %d KB, RSS: %d KB", startHeapKB, startRSSKB)
 
-	totalMessages := 3000
+	totalMessages := 6000
 	pubsubTopic := DefaultPubsubTopic
 
 	for i := 0; i < totalMessages; i++ {
@@ -199,7 +199,7 @@ func TestStressConnectDisconnect500Iteration(t *testing.T) {
 		node1.StopAndDestroy()
 	}()
 
-	iterations := 200
+	iterations := 1000
 	for i := 1; i <= iterations; i++ {
 		err := node0.ConnectPeer(node1)
 		require.NoError(t, err, "Iteration %d: node0 failed to connect to node1", i)
@@ -347,7 +347,7 @@ func TestStressLargePayloadEphemeralMessagesEndurance(t *testing.T) {
 	require.NoError(t, err)
 	Debug("Before endurance test: HeapAlloc = %d KB, RSS = %d KB", startHeapKB, startRSSKB)
 
-	maxIterations := 3000
+	maxIterations := 5000
 	payloadSize := 100 * 1024
 	largePayload := make([]byte, payloadSize)
 	for i := range largePayload {
@@ -391,7 +391,7 @@ func TestStress2Nodes500IterationTearDown(t *testing.T) {
 	require.NoError(t, err)
 	Debug("[%s] OS-level RSS at test START: %d KB", t.Name(), initialRSS)
 
-	totalIterations := 500
+	totalIterations := 2000
 	for i := 1; i <= totalIterations; i++ {
 		var nodes []*WakuNode
 		for n := 1; n <= 2; n++ {

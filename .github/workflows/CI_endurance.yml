@@ -28,6 +28,11 @@ jobs:
 
       - name: Install Go dependencies
         run: go mod download
+      
+      - name: Clean Go & libwaku caches
+        run: |
+          go clean -cache 
+          make -C waku clean 
 
       - name: Build nwaku dependencies
         run: make -C waku

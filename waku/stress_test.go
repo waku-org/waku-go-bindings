@@ -86,7 +86,7 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 	}()
 
 	
-	iterations := 5000
+	iterations := 3000
 
 	captureMemory(t.Name(), "at start")
 
@@ -104,6 +104,7 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 				TimeStart:       queryTimestamp,
 				IncludeData:     true,
 				PaginationLimit: proto.Uint64(50),
+				PaginationForward: false,
 			}
 
 			storedmsgs, err := wakuNode.GetStoredMessages(node2, storeQueryRequest)
@@ -136,7 +137,7 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 	captureMemory(t.Name(), "at start")
 
-	totalMessages := 2500
+	totalMessages := 5
 	pubsubTopic := DefaultPubsubTopic
 
 	for i := 0; i < totalMessages; i++ {

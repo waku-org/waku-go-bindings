@@ -36,7 +36,9 @@ jobs:
         run: sudo sh -c "ulimit -n 8192"
 
       - name: Run Endurance Test (Group 1)
+        shell: bash
         run: |
+          set -euo pipefail
           go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(TestStressMemoryUsageForThreeNodes|TestStressStoreQuery5kMessagesWithPagination|TestStressConnectDisconnect500Iteration|TestStressHighThroughput10kPublish)$' | tee testlogs1.log
 
       - name: Upload Test Logs (Group 1)
@@ -83,7 +85,10 @@ jobs:
         run: sudo sh -c "ulimit -n 8192"
 
       - name: Run Endurance Test (Group 2)
+        
+        shell: bash
         run: |
+          set -euo pipefail
           go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(TestStressRandomNodesInMesh|TestStress2Nodes500IterationTearDown|TestPeerExchangePXLoad)$' | tee testlogs2.log
 
       - name: Upload Test Logs (Group 2)

@@ -45,6 +45,12 @@ jobs:
           name: endurance-logs-group1
           path: testlogs1.log
 
+      - name: Upload Memory Metrics (Group 1)   
+        uses: actions/upload-artifact@v4
+        with:
+          name: memory-metrics-group1
+          path: px_load_metrics.csv    
+
   endurance2:
     runs-on: ubuntu-latest
 
@@ -85,3 +91,9 @@ jobs:
         with:
           name: endurance-logs-group2
           path: testlogs2.log
+      
+      - name: Upload Memory Metrics (Group 2)   
+        uses: actions/upload-artifact@v4
+        with:
+          name: memory-metrics-group2
+          path: px_load_metrics.csv

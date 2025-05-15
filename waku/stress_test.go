@@ -136,7 +136,7 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 	captureMemory(t.Name(), "at start")
 
-	totalMessages := 2000
+	totalMessages := 2500
 	pubsubTopic := DefaultPubsubTopic
 
 	for i := 0; i < totalMessages; i++ {

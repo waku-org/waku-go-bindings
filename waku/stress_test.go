@@ -86,7 +86,7 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 	}()
 
 	
-	iterations := 3000
+	iterations := 4000
 
 	captureMemory(t.Name(), "at start")
 
@@ -137,7 +137,7 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 	captureMemory(t.Name(), "at start")
 
-	totalMessages := 5
+	totalMessages := 2000
 	pubsubTopic := DefaultPubsubTopic
 
 	for i := 0; i < totalMessages; i++ {
@@ -169,7 +169,7 @@ func TestStressConnectDisconnect1kIteration(t *testing.T) {
 		node1.StopAndDestroy()
 	}()
 
-	iterations := 1000
+	iterations := 2000
 	for i := 1; i <= iterations; i++ {
 		err := node0.ConnectPeer(node1)
 		require.NoError(t, err, "Iteration %d: node0 failed to connect to node1", i)
@@ -196,7 +196,7 @@ func TestStressRandomNodesInMesh(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	minNodes := 5
-	maxNodes := 10
+	maxNodes := 20
 	nodes := make([]*WakuNode, 0, maxNodes)
 
 	for i := 0; i < minNodes; i++ {

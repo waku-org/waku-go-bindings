@@ -75,3 +75,4 @@ func GetRSSKB() (uint64, error) {
 	pageSize := os.Getpagesize()
 	return (rssPages * uint64(pageSize)) / 1024, nil
 }
+

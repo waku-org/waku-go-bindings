@@ -33,14 +33,14 @@ jobs:
         run: |
           go clean -cache 
           make -C waku clean 
-
+      
       - name: Build nwaku dependencies
-        run: 
-          cd third_party/nwaku
-          git pull 
-          make update 
-          make libwaku
-          make -C waku
+         working-directory: thirdpart/nwaku
+         run: |
+          git pull --ff-only        
+          make update             
+          make libwaku              
+          make -C waku              
 
       - name: Increase ulimit
         run: sudo sh -c "ulimit -n 8192"

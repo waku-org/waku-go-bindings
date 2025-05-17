@@ -1,0 +1,6 @@
+TestName,Phase,HeapAlloc(KB),RSS(KB),Timestamp
+TestStressHighThroughput10kPublish,at start,1373,41688,2025-05-17T22:36:16+03:00
+TestStressHighThroughput10kPublish,at end,1500,42200,2025-05-17T22:36:16+03:00
+TestStressStoreQuery5kMessagesWithPagination,at start,1063,42612,2025-05-17T22:37:16+03:00
+TestStressStoreQuery5kMessagesWithPagination,at start,1099,42960,2025-05-17T22:39:38+03:00
+TestStressStoreQuery5kMessagesWithPagination,at end,1237,43216,2025-05-17T22:39:38+03:00

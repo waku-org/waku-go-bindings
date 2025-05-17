@@ -2,7 +2,7 @@ name: Repeated Test Suite
 
 on:
   workflow_dispatch:
- 
+
 jobs:
   repeated-tests:
     runs-on: [self-hosted, ubuntu-22.04]
@@ -14,13 +14,13 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Initialize & update submodules
+      - name: Initialize submodules
         run: git submodule update --init --recursive
 
       - name: Prepare third_party directory
         run: |
-           mkdir -p third_party
-           chown $USER third_party
+          mkdir -p third_party
+          chown $USER third_party
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -30,12 +30,8 @@ jobs:
       - name: Install Go dependencies
         run: go mod download
 
-      - name: Build nwaku dependencies
-        run: |
-         cd third_party/nwaku
-         make update 
-         make libwaku
-         make -C waku
+      - name: Build dependencies
+        run: make -C waku
 
       - name: Clean environment
         run: go clean -cache

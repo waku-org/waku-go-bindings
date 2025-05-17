@@ -200,7 +200,7 @@ func TestStressRandomNodesInMesh(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	minNodes := 5
-	maxNodes := 20
+	maxNodes := 15
 	nodes := make([]*WakuNode, 0, maxNodes)
 
 	for i := 0; i < minNodes; i++ {

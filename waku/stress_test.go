@@ -86,7 +86,7 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 	}()
 
 	
-	iterations := 4000
+	iterations := 10000
 
 	captureMemory(t.Name(), "at start")
 
@@ -137,7 +137,7 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 	captureMemory(t.Name(), "at start")
 
-	const totalMessages = 1200        
+	const totalMessages = 5000        
 	var pubsubTopic  = DefaultPubsubTopic
 
 	for i := 0; i < totalMessages; i++ {

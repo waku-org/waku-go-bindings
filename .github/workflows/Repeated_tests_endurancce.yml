@@ -19,8 +19,8 @@ jobs:
 
       - name: Prepare third_party directory
         run: |
-          sudo mkdir -p third_party
-          sudo chown $USER third_party
+           mkdir -p third_party
+           chown $USER third_party
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -31,7 +31,11 @@ jobs:
         run: go mod download
 
       - name: Build nwaku dependencies
-        run: make -C waku
+        run: 
+         git pull
+         make update 
+         make libwaku
+         make -C waku
 
       - name: Clean environment
         run: go clean -cache

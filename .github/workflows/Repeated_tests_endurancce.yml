@@ -31,7 +31,8 @@ jobs:
         run: go mod download
 
       - name: Build nwaku dependencies
-        run: 
+        working-directory: third_party/nwaku
+        run: |
          git pull
          make update 
          make libwaku

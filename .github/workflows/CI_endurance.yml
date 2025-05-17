@@ -35,7 +35,7 @@ jobs:
           make -C waku clean 
       
       - name: Build nwaku dependencies
-         working-directory: thirdpart/nwaku
+         working-directory: third_party/nwaku
          run: |
           git pull --ff-only        
           make update             

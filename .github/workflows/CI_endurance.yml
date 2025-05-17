@@ -28,19 +28,9 @@ jobs:
 
       - name: Install Go dependencies
         run: go mod download
-      
-      - name: Clean Go & libwaku caches
-        run: |
-          go clean -cache 
-          make -C waku clean 
-      
+
       - name: Build nwaku dependencies
-        run: |
-          cd third_party/nwaku
-          git pull --ff-only        
-          make update             
-          make libwaku              
-          make -C waku              
+        run: make -C waku
 
       - name: Increase ulimit
         run: sudo sh -c "ulimit -n 8192"
@@ -48,9 +38,8 @@ jobs:
       - name: Run Endurance Test (Group 1)
         shell: bash
         run: |
-          
           set -euo pipefail
-          go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(TestStressMemoryUsageForThreeNodes|TestStressConnectDisconnect500Iteration|TestStressHighThroughput10kPublish)$' | tee testlogs1.log
+          go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(TestStressMemoryUsageForThreeNodes|TestStressStoreQuery5kMessagesWithPagination|TestStressConnectDisconnect500Iteration|TestStressHighThroughput10kPublish)$' | tee testlogs1.log
 
       - name: Upload Test Logs (Group 1)
         uses: actions/upload-artifact@v4
@@ -100,7 +89,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(TestStressRandomNodesInMesh|TestStress2Nodes2kIterationTearDown|TestPeerExchangePXLoad|TestStressStoreQuery5kMessagesWithPagination)$' | tee testlogs2.log
+          go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(TestStressRandomNodesInMesh|TestStress2Nodes2kIterationTearDown|TestPeerExchangePXLoad)$' | tee testlogs2.log
 
       - name: Upload Test Logs (Group 2)
         uses: actions/upload-artifact@v4

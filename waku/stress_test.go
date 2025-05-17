@@ -119,39 +119,43 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 }
 
 func TestStressHighThroughput10kPublish(t *testing.T) {
-
 	node1Cfg := DefaultWakuConfig
 	node1Cfg.Relay = true
+
 	node1, err := StartWakuNode("node1", &node1Cfg)
-	require.NoError(t, err, "Failed to start node1")
+	require.NoError(t, err, "failed to start node1")
 	defer node1.StopAndDestroy()
 
 	node2Cfg := DefaultWakuConfig
 	node2Cfg.Relay = true
+
 	node2, err := StartWakuNode("node2", &node2Cfg)
-	require.NoError(t, err, "Failed to start node2")
+	require.NoError(t, err, "failed to start node2")
 	defer node2.StopAndDestroy()
 
-	err = node1.ConnectPeer(node2)
-	require.NoError(t, err, "Failed to connect node1 to node2")
+	require.NoError(t, node1.ConnectPeer(node2), "failed to connect peers")
 
 	captureMemory(t.Name(), "at start")
 
-	totalMessages := 1500
-	pubsubTopic := DefaultPubsubTopic
+	const totalMessages = 1200        
+	var pubsubTopic  = DefaultPubsubTopic
 
 	for i := 0; i < totalMessages; i++ {
-		message := node1.CreateMessage()
-		message.Payload = []byte(fmt.Sprintf("High-throughput message #%d", i))
+		msg := node1.CreateMessage()
+		msg.Payload = []byte(fmt.Sprintf("high-throughput message #%d", i))
 
-		_, err := node1.RelayPublishNoCTX(pubsubTopic, message)
-		require.NoError(t, err, "Failed to publish message %d", i)
-		time.Sleep(1 * time.Second)
-		Debug("###Iteration number#%d", i)
+		hash, err := node1.RelayPublishNoCTX(pubsubTopic, msg)
+		require.NoError(t, err, "publish failed @%d", i)
+
+		err = node2.VerifyMessageReceived(msg, hash )
+		require.NoError(t, err, "verification failed @%d", i)
+
+
 	}
 
 	captureMemory(t.Name(), "at end")
 }
+
 
 func TestStressConnectDisconnect1kIteration(t *testing.T) {
 	captureMemory(t.Name(), "at start")

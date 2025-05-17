@@ -35,7 +35,12 @@ jobs:
           make -C waku clean 
 
       - name: Build nwaku dependencies
-        run: make -C waku
+        run: 
+          cd third_party/nwaku
+          git pull 
+          make update 
+          make libwaku
+          make -C waku
 
       - name: Increase ulimit
         run: sudo sh -c "ulimit -n 8192"
@@ -43,6 +48,7 @@ jobs:
       - name: Run Endurance Test (Group 1)
         shell: bash
         run: |
+          
           set -euo pipefail
           go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(TestStressMemoryUsageForThreeNodes|TestStressConnectDisconnect500Iteration|TestStressHighThroughput10kPublish)$' | tee testlogs1.log
 

@@ -32,7 +32,7 @@ jobs:
 
       - name: Build nwaku dependencies
         run: |
-        cd third_party/nwaku
+         cd third_party/nwaku
          git pull
          make update 
          make libwaku

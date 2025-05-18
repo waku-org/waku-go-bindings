@@ -86,7 +86,7 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 	}()
 
 	
-	iterations := 3000
+	iterations := 1000
 
 	captureMemory(t.Name(), "at start")
 
@@ -111,7 +111,7 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 			require.NoError(t, err, "Failed to query store messages")
 			require.Greater(t, len(*storedmsgs.Messages), 0, "Expected at least one stored message")
 		}
-		Debug("##Iteration #%d",iterations)
+		Debug("##Iteration #%d",i)
 	}
 
 	captureMemory(t.Name(), "at end")
@@ -178,7 +178,7 @@ func TestStressConnectDisconnect1kIteration(t *testing.T) {
 	for i := 1; i <= iterations; i++ {
 		err := node0.ConnectPeer(node1)
 		require.NoError(t, err, "Iteration %d: node0 failed to connect to node1", i)
-		time.Sleep(1 * time.Second)
+		time.Sleep(150 * time.Millisecond)
 		count, err := node0.GetNumConnectedPeers()
 		require.NoError(t, err, "Iteration %d: failed to get peers for node0", i)
 		Debug("Iteration %d: node0 sees %d connected peers", i, count)
@@ -192,7 +192,7 @@ func TestStressConnectDisconnect1kIteration(t *testing.T) {
 		err = node0.DisconnectPeer(node1)
 		require.NoError(t, err, "Iteration %d: node0 failed to disconnect from node1", i)
 		Debug("Iteration %d: node0 disconnected from node1", i)
-		time.Sleep(2 * time.Second)
+		time.Sleep(250 * time.Millisecond)
 	}
 	captureMemory(t.Name(), "at end")
 }

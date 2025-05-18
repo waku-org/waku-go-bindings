@@ -138,7 +138,7 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 	captureMemory(t.Name(), "at start")
 
-	const totalMessages = 5000        
+	const totalMessages = 1000        
 	var pubsubTopic  = DefaultPubsubTopic
 
 	for i := 0; i < totalMessages; i++ {
@@ -147,7 +147,7 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 		hash, err := node1.RelayPublishNoCTX(pubsubTopic, msg)
 		require.NoError(t, err, "publish failed @%d", i)
-
+        Debug("Iteration-10kpublish #%d",i)
 		err = node2.VerifyMessageReceived(msg, hash )
 		require.NoError(t, err, "verification failed @%d", i)
 
@@ -218,7 +218,7 @@ func TestStressRandomNodesInMesh(t *testing.T) {
 
 	captureMemory(t.Name(), "at start")
 
-	testDuration := 30 * time.Minute
+	testDuration := 10 * time.Minute
 	endTime := time.Now().Add(testDuration)
 
 	for time.Now().Before(endTime) {

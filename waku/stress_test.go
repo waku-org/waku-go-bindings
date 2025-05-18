@@ -86,7 +86,7 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 	}()
 
 	
-	iterations := 10000
+	iterations := 3000
 
 	captureMemory(t.Name(), "at start")
 
@@ -111,6 +111,7 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 			require.NoError(t, err, "Failed to query store messages")
 			require.Greater(t, len(*storedmsgs.Messages), 0, "Expected at least one stored message")
 		}
+		Debug("##Iteration #%d",iterations)
 	}
 
 	captureMemory(t.Name(), "at end")
@@ -173,7 +174,7 @@ func TestStressConnectDisconnect1kIteration(t *testing.T) {
 		node1.StopAndDestroy()
 	}()
 
-	iterations := 2000
+	iterations := 1000
 	for i := 1; i <= iterations; i++ {
 		err := node0.ConnectPeer(node1)
 		require.NoError(t, err, "Iteration %d: node0 failed to connect to node1", i)

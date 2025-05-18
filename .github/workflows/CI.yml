@@ -39,7 +39,9 @@ jobs:
 
       - name: Run Endurance Test
         run: |
-          go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(?!TestStress).*' | tee testlogs.log
+          # matches every Test… function *except* TestStress
+          go test -p=1 -v ./waku -count=1 -timeout=360m \
+          -run '^Test($|[^S]|S[^t])' | tee testlogs.log
 
       - name: Upload Test Logs
         uses: actions/upload-artifact@v4

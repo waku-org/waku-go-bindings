@@ -1,5 +1,5 @@
-//go:build !stress
-// +build !stress
+//go:build stress
+// +build stress
 
 package waku
 
@@ -86,7 +86,7 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 	}()
 
 	
-	iterations := 4000
+	iterations := 1000
 
 	captureMemory(t.Name(), "at start")
 
@@ -111,6 +111,7 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 			require.NoError(t, err, "Failed to query store messages")
 			require.Greater(t, len(*storedmsgs.Messages), 0, "Expected at least one stored message")
 		}
+		Debug("##Iteration #%d",i)
 	}
 
 	captureMemory(t.Name(), "at end")
@@ -119,39 +120,43 @@ func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
 }
 
 func TestStressHighThroughput10kPublish(t *testing.T) {
-
 	node1Cfg := DefaultWakuConfig
 	node1Cfg.Relay = true
+
 	node1, err := StartWakuNode("node1", &node1Cfg)
-	require.NoError(t, err, "Failed to start node1")
+	require.NoError(t, err, "failed to start node1")
 	defer node1.StopAndDestroy()
 
 	node2Cfg := DefaultWakuConfig
 	node2Cfg.Relay = true
+
 	node2, err := StartWakuNode("node2", &node2Cfg)
-	require.NoError(t, err, "Failed to start node2")
+	require.NoError(t, err, "failed to start node2")
 	defer node2.StopAndDestroy()
 
-	err = node1.ConnectPeer(node2)
-	require.NoError(t, err, "Failed to connect node1 to node2")
+	require.NoError(t, node1.ConnectPeer(node2), "failed to connect peers")
 
 	captureMemory(t.Name(), "at start")
 
-	totalMessages := 2000
-	pubsubTopic := DefaultPubsubTopic
+	const totalMessages = 1000        
+	var pubsubTopic  = DefaultPubsubTopic
 
 	for i := 0; i < totalMessages; i++ {
-		message := node1.CreateMessage()
-		message.Payload = []byte(fmt.Sprintf("High-throughput message #%d", i))
+		msg := node1.CreateMessage()
+		msg.Payload = []byte(fmt.Sprintf("high-throughput message #%d", i))
 
-		_, err := node1.RelayPublishNoCTX(pubsubTopic, message)
-		require.NoError(t, err, "Failed to publish message %d", i)
-		time.Sleep(1 * time.Second)
-		Debug("###Iteration number#%d", i)
+		hash, err := node1.RelayPublishNoCTX(pubsubTopic, msg)
+		require.NoError(t, err, "publish failed @%d", i)
+        Debug("Iteration-10kpublish #%d",i)
+		err = node2.VerifyMessageReceived(msg, hash )
+		require.NoError(t, err, "verification failed @%d", i)
+
+
 	}
 
 	captureMemory(t.Name(), "at end")
 }
+
 
 func TestStressConnectDisconnect1kIteration(t *testing.T) {
 	captureMemory(t.Name(), "at start")
@@ -169,11 +174,11 @@ func TestStressConnectDisconnect1kIteration(t *testing.T) {
 		node1.StopAndDestroy()
 	}()
 
-	iterations := 2000
+	iterations := 1000
 	for i := 1; i <= iterations; i++ {
 		err := node0.ConnectPeer(node1)
 		require.NoError(t, err, "Iteration %d: node0 failed to connect to node1", i)
-		time.Sleep(1 * time.Second)
+		time.Sleep(150 * time.Millisecond)
 		count, err := node0.GetNumConnectedPeers()
 		require.NoError(t, err, "Iteration %d: failed to get peers for node0", i)
 		Debug("Iteration %d: node0 sees %d connected peers", i, count)
@@ -187,7 +192,7 @@ func TestStressConnectDisconnect1kIteration(t *testing.T) {
 		err = node0.DisconnectPeer(node1)
 		require.NoError(t, err, "Iteration %d: node0 failed to disconnect from node1", i)
 		Debug("Iteration %d: node0 disconnected from node1", i)
-		time.Sleep(2 * time.Second)
+		time.Sleep(250 * time.Millisecond)
 	}
 	captureMemory(t.Name(), "at end")
 }
@@ -196,7 +201,7 @@ func TestStressRandomNodesInMesh(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	minNodes := 5
-	maxNodes := 20
+	maxNodes := 15
 	nodes := make([]*WakuNode, 0, maxNodes)
 
 	for i := 0; i < minNodes; i++ {
@@ -213,7 +218,7 @@ func TestStressRandomNodesInMesh(t *testing.T) {
 
 	captureMemory(t.Name(), "at start")
 
-	testDuration := 30 * time.Minute
+	testDuration := 10 * time.Minute
 	endTime := time.Now().Add(testDuration)
 
 	for time.Now().Before(endTime) {

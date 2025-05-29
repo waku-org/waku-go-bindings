@@ -6,7 +6,7 @@ on:
     - cron: '0 2 * * *'
 
 jobs:
-  endurance:
+  Daily:
     runs-on: ubuntu-latest
 
     steps:
@@ -39,10 +39,11 @@ jobs:
 
       - name: Run Endurance Test
         run: |
-          go test -p=1 -v ./waku -count=1 -timeout=360m -run '^(?!TestStress).*' | tee testlogs.log
+          go test -p=1 -v ./waku -count=1 -timeout=360m \
+            | tee testlogs.log
 
       - name: Upload Test Logs
         uses: actions/upload-artifact@v4
         with:
-          name: endurance-logs
+          name: daily-logs
           path: testlogs.log

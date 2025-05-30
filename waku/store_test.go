@@ -823,6 +823,7 @@ func TestCheckStoredMSGsEphemeralFalse(t *testing.T) {
 }
 
 func TestCheckLegacyStore(t *testing.T) {
+	t.Skip("Skipping test as legacy store is about to be removed and no longer maintained")
 	Debug("Starting test ")
 
 	node1Config := DefaultWakuConfig

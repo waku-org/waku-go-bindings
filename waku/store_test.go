@@ -822,6 +822,55 @@ func TestCheckStoredMSGsEphemeralFalse(t *testing.T) {
 	Debug("Test finished successfully ")
 }
 
+func TestCheckLegacyStore(t *testing.T) {
+	Debug("Starting test ")
+
+	node1Config := DefaultWakuConfig
+	node1Config.Relay = true
+
+	Debug("Creating Node1 ")
+	node1, err := StartWakuNode("Node1", &node1Config)
+	require.NoError(t, err, "Failed to start Node1")
+
+	node2Config := DefaultWakuConfig
+	node2Config.Relay = true
+	node2Config.Store = true
+	node2Config.LegacyStore = true
+
+	Debug("Creating Node2")
+	node2, err := StartWakuNode("Node2", &node2Config)
+	require.NoError(t, err, "Failed to start Node2")
+
+	defer func() {
+		Debug("Stopping and destroying both nodes")
+		node1.StopAndDestroy()
+		node2.StopAndDestroy()
+	}()
+
+	Debug("Connecting Node2 to Node1")
+	err = node2.ConnectPeer(node1)
+	require.NoError(t, err, "Failed to connect Node2 to Node1")
+	queryTimestamp := proto.Int64(time.Now().UnixNano())
+
+	Debug("Sender Node1 is publishing a message")
+	message := node1.CreateMessage()
+	msgHash, err := node1.RelayPublishNoCTX(DefaultPubsubTopic, message)
+	require.NoError(t, err)
+	require.NotEmpty(t, msgHash)
+
+	Debug("Querying stored messages from Node2 using Node1")
+	storeQueryRequest := &common.StoreQueryRequest{
+		TimeStart: queryTimestamp,
+	}
+
+	storedmsgs, err := node1.GetStoredMessages(node2, storeQueryRequest)
+	require.NoError(t, err, "Failed to query store messages from Node2")
+	require.Equal(t, 1, len(*storedmsgs.Messages), "Expected exactly one stored message")
+
+	Debug("Test finished successfully ")
+
+}
+
 func TestStoredMessagesWithVDifferentPayloads(t *testing.T) {
 	Debug("Starting test ")
 

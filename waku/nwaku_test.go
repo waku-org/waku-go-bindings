@@ -964,3 +964,70 @@ func TestParallelPings(t *testing.T) {
 	// Stop nodes
 	require.NoError(t, dialerNode.Stop())
 }
+
+func TestOnline(t *testing.T) {
+
+	clusterId := uint16(16)
+	shardId := uint16(64)
+
+	tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0)
+	require.NoError(t, err)
+
+	// start node1
+	wakuConfig1 := common.WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       clusterId,
+		Shards:          []uint16{shardId},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+
+	node1, err := NewWakuNode(&wakuConfig1, "node1")
+	require.NoError(t, err)
+	require.NoError(t, node1.Start())
+
+	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0)
+	require.NoError(t, err)
+
+	// start node2
+	wakuConfig2 := common.WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       clusterId,
+		Shards:          []uint16{shardId},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+	node2, err := NewWakuNode(&wakuConfig2, "node2")
+	require.NoError(t, err)
+	require.NoError(t, node2.Start())
+	multiaddr2, err := node2.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, multiaddr2)
+	require.True(t, len(multiaddr2) > 0)
+
+	// node1 dials node2 so they become peers
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	err = node1.Connect(ctx, multiaddr2[0])
+	require.NoError(t, err)
+	time.Sleep(1 * time.Second)
+	// Check that both nodes now have one connected peer
+	peerCount1, err := node1.GetNumConnectedPeers()
+	require.NoError(t, err)
+	require.True(t, peerCount1 == 1, "node1 should have 1 peer")
+	peerCount2, err := node2.GetNumConnectedPeers()
+	require.NoError(t, err)
+	require.True(t, peerCount2 == 1, "node2 should have 1 peer")
+
+	isOnline, err := node1.IsOnline()
+	require.NoError(t, err)
+	require.True(t, isOnline, "node1 should be online")
+
+	// Stop nodes
+	require.NoError(t, node1.Stop())
+	require.NoError(t, node2.Stop())
+}

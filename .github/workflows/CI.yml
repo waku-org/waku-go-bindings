@@ -37,9 +37,9 @@ jobs:
       - name: Increase ulimit
         run: sudo sh -c "ulimit -n 8192"  
 
-      - name: Run Endurance Test
+      - name: Run Daily Test
         run: |
-          go test -p=1 -v ./waku -count=1 -timeout=360m \
+          go test -p=1 -v ./waku -count=15 -timeout=360m \
             | tee testlogs.log
 
       - name: Upload Test Logs

@@ -1031,3 +1031,117 @@ func TestOnline(t *testing.T) {
 	require.NoError(t, node1.Stop())
 	require.NoError(t, node2.Stop())
 }
+
+func TestDisconnectAllPeers(t *testing.T) {
+
+	clusterId := uint16(16)
+	shardId := uint16(64)
+
+	tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0)
+	require.NoError(t, err)
+
+	// start node1
+	wakuConfig1 := common.WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       clusterId,
+		Shards:          []uint16{shardId},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+
+	node1, err := NewWakuNode(&wakuConfig1, "node1")
+	require.NoError(t, err)
+	require.NoError(t, node1.Start())
+	defer node1.Stop()
+
+	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0)
+	require.NoError(t, err)
+
+	// start node2
+	wakuConfig2 := common.WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       clusterId,
+		Shards:          []uint16{shardId},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+	node2, err := NewWakuNode(&wakuConfig2, "node2")
+	require.NoError(t, err)
+	require.NoError(t, node2.Start())
+	defer node2.Stop()
+	multiaddr2, err := node2.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, multiaddr2)
+	require.True(t, len(multiaddr2) > 0)
+
+	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0)
+	require.NoError(t, err)
+
+	// start node3
+	wakuConfig3 := common.WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       clusterId,
+		Shards:          []uint16{shardId},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+	node3, err := NewWakuNode(&wakuConfig3, "node3")
+	require.NoError(t, err)
+	require.NoError(t, node3.Start())
+	defer node3.Stop()
+	multiaddr3, err := node3.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, multiaddr3)
+	require.True(t, len(multiaddr3) > 0)
+
+	tcpPort, udpPort, err = GetFreePortIfNeeded(0, 0)
+	require.NoError(t, err)
+
+	// start node4
+	wakuConfig4 := common.WakuConfig{
+		Relay:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: false,
+		ClusterID:       clusterId,
+		Shards:          []uint16{shardId},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+	node4, err := NewWakuNode(&wakuConfig4, "node4")
+	require.NoError(t, err)
+	require.NoError(t, node4.Start())
+	defer node4.Stop()
+	multiaddr4, err := node4.ListenAddresses()
+	require.NoError(t, err)
+	require.NotNil(t, multiaddr4)
+	require.True(t, len(multiaddr4) > 0)
+
+	to_dial := []ma.Multiaddr{multiaddr2[0], multiaddr3[0], multiaddr4[0]}
+
+	for _, addr := range to_dial {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		defer cancel()
+		err = node1.Connect(ctx, addr)
+		require.NoError(t, err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	peerCount1, err := node1.GetNumConnectedPeers()
+	require.NoError(t, err)
+	require.True(t, peerCount1 == 3, "node1 should have 3 peers")
+
+	err = node1.DisconnectAllPeers()
+	require.NoError(t, err)
+	time.Sleep(1 * time.Second)
+	peerCount1, err = node1.GetNumConnectedPeers()
+	require.NoError(t, err)
+	require.True(t, peerCount1 == 0, "node1 should have 0 peers")
+
+}

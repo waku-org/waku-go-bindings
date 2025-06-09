@@ -186,6 +186,39 @@ func TestBasicWaku(t *testing.T) {
 
 }
 
+func TestWakuDiscv5(t *testing.T) {
+
+	// ctx := context.Background()
+
+	nwakuConfig := common.WakuConfig{
+		Relay:                true,
+		LogLevel:             "DEBUG",
+		Discv5BootstrapNodes: []string{"enr:-QEKuED9AJm2HGgrRpVaJY2nj68ao_QiPeUT43sK-aRM7sMJ6R4G11OSDOwnvVacgN1sTw-K7soC5dzHDFZgZkHU0u-XAYJpZIJ2NIJpcISnYxMvim11bHRpYWRkcnO4WgAqNiVib290LTAxLmRvLWFtczMuc3RhdHVzLnByb2Quc3RhdHVzLmltBnZfACw2JWJvb3QtMDEuZG8tYW1zMy5zdGF0dXMucHJvZC5zdGF0dXMuaW0GAbveA4Jyc40AEAUAAQAgAEAAgAEAiXNlY3AyNTZrMaEC3rRtFQSgc24uWewzXaxTY8hDAHB8sgnxr9k8Rjb5GeSDdGNwgnZfg3VkcIIjKIV3YWt1Mg0", "enr:-QEcuED7ww5vo2rKc1pyBp7fubBUH-8STHEZHo7InjVjLblEVyDGkjdTI9VdqmYQOn95vuQH-Htku17WSTzEufx-Wg4mAYJpZIJ2NIJpcIQihw1Xim11bHRpYWRkcnO4bAAzNi5ib290LTAxLmdjLXVzLWNlbnRyYWwxLWEuc3RhdHVzLnByb2Quc3RhdHVzLmltBnZfADU2LmJvb3QtMDEuZ2MtdXMtY2VudHJhbDEtYS5zdGF0dXMucHJvZC5zdGF0dXMuaW0GAbveA4Jyc40AEAUAAQAgAEAAgAEAiXNlY3AyNTZrMaECxjqgDQ0WyRSOilYU32DA5k_XNlDis3m1VdXkK9xM6kODdGNwgnZfg3VkcIIjKIV3YWt1Mg0", "enr:-QEcuEAoShWGyN66wwusE3Ri8hXBaIkoHZHybUB8cCPv5v3ypEf9OCg4cfslJxZFANl90s-jmMOugLUyBx4EfOBNJ6_VAYJpZIJ2NIJpcIQI2hdMim11bHRpYWRkcnO4bAAzNi5ib290LTAxLmFjLWNuLWhvbmdrb25nLWMuc3RhdHVzLnByb2Quc3RhdHVzLmltBnZfADU2LmJvb3QtMDEuYWMtY24taG9uZ2tvbmctYy5zdGF0dXMucHJvZC5zdGF0dXMuaW0GAbveA4Jyc40AEAUAAQAgAEAAgAEAiXNlY3AyNTZrMaEDP7CbRk-YKJwOFFM4Z9ney0GPc7WPJaCwGkpNRyla7mCDdGNwgnZfg3VkcIIjKIV3YWt1Mg0"},
+		Discv5Discovery:      true,
+		ClusterID:            16,
+		Shards:               []uint16{32},
+		Discv5EnrAutoUpdate:  true,
+		Discv5UdpPort:        9005,
+	}
+
+	w, err := NewWakuNode(&nwakuConfig, "nwaku")
+	require.NoError(t, err)
+	require.NoError(t, w.Start())
+
+	for i := 0; i < 15; i++ {
+		numConnected, err := w.GetNumConnectedPeers()
+		require.NoError(t, err)
+		// Have to be connected to at least 3 nodes: the static node, the bootstrap node, and one discovered node
+		if numConnected > 10 {
+			break
+		}
+		time.Sleep(10 * time.Second)
+	}
+
+	require.NoError(t, w.Stop())
+
+}
+
 func TestPeerExchange(t *testing.T) {
 
 	tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0)

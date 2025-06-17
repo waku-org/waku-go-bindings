@@ -40,7 +40,7 @@ jobs:
       - name: Run Daily Test
         run: |
           go test -count=5 -p=1 -v -timeout=360m ./waku \
-+            | tee testlogs.log
+            | tee testlogs.log
 
       - name: Upload Test Logs
         uses: actions/upload-artifact@v4

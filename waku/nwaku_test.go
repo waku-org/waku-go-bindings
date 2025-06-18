@@ -1139,7 +1139,6 @@ func TestDisconnectAllPeers(t *testing.T) {
 
 	err = node1.DisconnectAllPeers()
 	require.NoError(t, err)
-	time.Sleep(1 * time.Second)
 	peerCount1, err = node1.GetNumConnectedPeers()
 	require.NoError(t, err)
 	require.True(t, peerCount1 == 0, "node1 should have 0 peers")

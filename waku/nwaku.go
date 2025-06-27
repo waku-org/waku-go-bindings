@@ -321,6 +321,10 @@ package waku
 		waku_is_online(wakuCtx, (WakuCallBack) WakuGoCallback, resp);
 	}
 
+	static void cGoWakuGetMetrics(void* wakuCtx, void* resp) {
+		waku_get_metrics(wakuCtx, (WakuCallBack) WakuGoCallback, resp);
+	}
+
 */
 import "C"
 import (
@@ -1650,4 +1654,40 @@ func (n *WakuNode) IsOnline() (bool, error) {
 	Error("Failed to query online state for %v: %v", n.nodeName, errMsg)
 
 	return false, errors.New(errMsg)
+}
+
+func (n *WakuNode) GetMetrics() (string, error) {
+	if n == nil {
+		err := errors.New("waku node is nil")
+		Error("Failed to get metrics %v", err)
+		return "", err
+	}
+
+	Debug("Querying metrics for %v", n.nodeName)
+
+	wg := sync.WaitGroup{}
+	var resp = C.allocResp(unsafe.Pointer(&wg))
+	defer C.freeResp(resp)
+
+	wg.Add(1)
+	C.cGoWakuGetMetrics(n.wakuCtx, resp)
+	wg.Wait()
+
+	if C.getRet(resp) == C.RET_OK {
+		metricsStr := C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+
+		if metricsStr == "" {
+			errMsg := "received empty metrics response"
+			Error(errMsg)
+			return "", errors.New(errMsg)
+		}
+
+		return metricsStr, nil
+
+	}
+
+	errMsg := "error GetMetrics: " + C.GoStringN(C.getMyCharPtr(resp), C.int(C.getMyCharLen(resp)))
+	Error("Failed to query metrics for %v: %v", n.nodeName, errMsg)
+
+	return "", errors.New(errMsg)
 }

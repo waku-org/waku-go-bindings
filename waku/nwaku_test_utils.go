@@ -137,6 +137,8 @@ func WaitForAutoConnection(nodeList []*WakuNode) error {
 		return err
 	}
 
+	// Wait for the protocol connections to settle
+	time.Sleep(1 * time.Second)
 	Debug("Auto-connection check completed successfully")
 	return nil
 }
@@ -296,7 +298,7 @@ func captureMemory(testName, phase string) {
 	runtime.ReadMemStats(&ms)
 
 	heapKB := ms.HeapAlloc / 1024
-	rssKB, _ := utils.GetRSSKB() 
+	rssKB, _ := utils.GetRSSKB()
 
 	Debug("[%s] Memory usage  (%s): %d KB (RSS %d KB)", testName, phase, heapKB, rssKB)
 

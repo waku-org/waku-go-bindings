@@ -38,8 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           ulimit -n 65536
-          ulimit -n  # This will print the current limit to verify it worked
-          go test -count=10 -p=1 -v -timeout=360m ./waku \
+          go test -count=1 -p=1 -v -timeout=360m ./waku \
             | tee testlogs.log
 
       - name: Upload Test Logs

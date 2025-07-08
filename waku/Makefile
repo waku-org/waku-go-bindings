@@ -20,7 +20,7 @@ prepare:
 		cd $(THIRD_PARTY_DIR) && \
 		git clone $(NWAKU_REPO) && \
 		cd $(NWAKU_DIR) && \
-		git checkout debug-watchdog && \
+		git checkout chore-delay-watchdog && \
 		make update; \
 	else \
 		echo "nwaku repository already exists."; \

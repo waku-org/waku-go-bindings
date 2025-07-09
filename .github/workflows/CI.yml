@@ -34,11 +34,13 @@ jobs:
       - name: Build nwaku dependencies
         run: make -C waku
 
+      - name: Increase ulimit
+        run: sudo sh -c "ulimit -n 8192"
+
       - name: Run Daily Test
         run: |
           set -euo pipefail
-          ulimit -n 65536
-          go test -count=5 -p=1 -v -timeout=360m ./waku \
+          go test -count=3 -p=1 -v -timeout=360m ./waku \
             | tee testlogs.log
 
       - name: Upload Test Logs

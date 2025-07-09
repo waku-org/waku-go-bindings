@@ -138,7 +138,7 @@ func WaitForAutoConnection(nodeList []*WakuNode) error {
 	}
 
 	// Wait for the protocol connections to settle
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 	Debug("Auto-connection check completed successfully")
 	return nil
 }

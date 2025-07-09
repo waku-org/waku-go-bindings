@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cenkalti/backoff/v3"
 	"github.com/stretchr/testify/require"
 	"github.com/waku-org/go-waku/waku/v2/protocol/pb"
 
@@ -1179,30 +1178,8 @@ func TestStoredDuplicateMessage(t *testing.T) {
 	err = node2.ConnectPeer(node1)
 	require.NoError(t, err, "Failed to connect Node2 to Node1")
 
-	Debug("Waiting for peer connections to stabilize")
-	options := func(b *backoff.ExponentialBackOff) {
-		b.MaxElapsedTime = 10 * time.Second
-	}
-
-	require.NoError(t, RetryWithBackOff(func() error {
-		numPeersNode1, err := node1.GetNumConnectedRelayPeers(DefaultPubsubTopic)
-		if err != nil {
-			return err
-		}
-		if numPeersNode1 == 0 {
-			return fmt.Errorf("node1 has 0 relay peers, expected at least 1")
-		}
-
-		numPeersNode2, err := node2.GetNumConnectedRelayPeers(DefaultPubsubTopic)
-		if err != nil {
-			return err
-		}
-		if numPeersNode2 == 0 {
-			return fmt.Errorf("node2 has 0 relay peers, expected at least 1")
-		}
-
-		return nil
-	}, options), "Peers did not stabilize in time")
+	err = WaitForAutoConnection([]*WakuNode{node1, node2})
+	require.NoError(t, err, "Nodes did not connect within timeout")
 
 	queryTimestamp := proto.Int64(time.Now().UnixNano())
 	var msg = node1.CreateMessage()

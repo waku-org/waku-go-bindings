@@ -1181,11 +1181,19 @@ func TestStoredDuplicateMessage(t *testing.T) {
 	err = WaitForAutoConnection([]*WakuNode{node1, node2})
 	require.NoError(t, err, "Nodes did not connect within timeout")
 
+	peers1, err := node1.GetConnectedPeers()
+	require.NoError(t, err, "failed getting node1's peers")
+	fmt.Println("---------- node1 connected peers: ", peers1)
+
 	queryTimestamp := proto.Int64(time.Now().UnixNano())
 	var msg = node1.CreateMessage()
 	Debug("Node1 is publishing two identical messages")
 	_, err = node1.RelayPublishNoCTX(DefaultPubsubTopic, msg)
 	require.NoError(t, err, "Failed to publish first message")
+
+	peers2, err := node2.GetConnectedPeers()
+	require.NoError(t, err, "failed getting node2's peers")
+	fmt.Println("---------- node2 connected peers: ", peers2)
 
 	_, err = node2.RelayPublishNoCTX(DefaultPubsubTopic, msg)
 	require.NoError(t, err, "Failed to publish second message")

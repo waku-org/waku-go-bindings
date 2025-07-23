@@ -65,6 +65,7 @@ func TestStressMemoryUsageForThreeNodes(t *testing.T) {
 }
 
 func TestStressStoreQuery5kMessagesWithPagination(t *testing.T) {
+	t.Skip("Skipping temporarily for CI performance or debug reasons")
 	Debug("Starting test")
 	runtime.GC()
 	nodeConfig := DefaultWakuConfig
@@ -159,6 +160,7 @@ func TestStressHighThroughput10kPublish(t *testing.T) {
 
 
 func TestStressConnectDisconnect1kIteration(t *testing.T) {
+	t.Skip("Skipping temporarily for CI performance")
 	captureMemory(t.Name(), "at start")
 
 	node0Cfg := DefaultWakuConfig

@@ -40,7 +40,7 @@ jobs:
       - name: Run Daily Test
         run: |
           set -euo pipefail
-          go test -count=10 -p=1 -v -timeout=360m ./waku \
+          go test -p=1 -v -timeout=360m ./waku -count=10 \
             | tee testlogs.log
 
       - name: Upload Test Logs

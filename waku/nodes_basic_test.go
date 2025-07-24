@@ -95,3 +95,34 @@ func TestDoubleStart(t *testing.T) {
 	require.NoError(t, node.Start())
 
 }
+
+func TestDoubleStop(t *testing.T) {
+
+	tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0)
+	require.NoError(t, err)
+
+	config := common.WakuConfig{
+		Relay:           true,
+		Store:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: true,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+
+	node, err := NewWakuNode(&config, "node")
+	require.NoError(t, err)
+	defer node.StopAndDestroy()
+
+	// start node
+	require.NoError(t, node.Start())
+
+	// stop node
+	require.NoError(t, node.Stop())
+
+	// now attempt to stop it again
+	require.NoError(t, node.Stop())
+
+}

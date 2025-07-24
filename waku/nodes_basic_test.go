@@ -121,7 +121,6 @@ func TestDoubleStop(t *testing.T) {
 
 	// stop node
 	require.NoError(t, node.Stop())
-
 	// now attempt to stop it again
 	require.NoError(t, node.Stop())
 

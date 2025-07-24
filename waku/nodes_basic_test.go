@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/waku-org/waku-go-bindings/waku/common"
 )
 
 func TestBasicWakuNodes(t *testing.T) {
@@ -67,4 +68,60 @@ func TestNodeRestart(t *testing.T) {
 	require.Equal(t, enrBefore, enrAfter, "ENR should remain the same after node restart")
 
 	Debug("TestNodeRestart completed successfully")
+}
+func TestDoubleStart(t *testing.T) {
+
+	tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0)
+	require.NoError(t, err)
+
+	config := common.WakuConfig{
+		Relay:           true,
+		Store:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: true,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+
+	node, err := NewWakuNode(&config, "node")
+	require.NoError(t, err)
+	defer node.StopAndDestroy()
+
+	// start node
+	require.NoError(t, node.Start())
+	// now attempt to start again
+	require.NoError(t, node.Start())
+
+}
+
+func TestDoubleStop(t *testing.T) {
+
+	tcpPort, udpPort, err := GetFreePortIfNeeded(0, 0)
+	require.NoError(t, err)
+
+	config := common.WakuConfig{
+		Relay:           true,
+		Store:           true,
+		LogLevel:        "DEBUG",
+		Discv5Discovery: true,
+		ClusterID:       16,
+		Shards:          []uint16{64},
+		Discv5UdpPort:   udpPort,
+		TcpPort:         tcpPort,
+	}
+
+	node, err := NewWakuNode(&config, "node")
+	require.NoError(t, err)
+	defer node.StopAndDestroy()
+
+	// start node
+	require.NoError(t, node.Start())
+
+	// stop node
+	require.NoError(t, node.Stop())
+	// now attempt to stop it again
+	require.NoError(t, node.Stop())
+
 }

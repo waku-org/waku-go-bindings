@@ -39,8 +39,8 @@ jobs:
       - name: Initialize CSV
         run: echo "TestName,Iteration,Phase,HeapAlloc(KB),RSS(KB),Timestamp" > memory_metrics.csv
 
-    - name: Repeated test runs
-      run: |
+      - name: Repeated test runs
+        run: |
         set +e
         for i in {1..20}; do
           echo "Iteration $i: measuring memory BEFORE the tests..."

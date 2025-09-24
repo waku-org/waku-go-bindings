@@ -1,7 +1,7 @@
 # Makefile for Waku Go Bindings
 
 # Directories
-THIRD_PARTY_DIR := ../third_party
+THIRD_PARTY_DIR := $(shell pwd)/../third_party
 NWAKU_REPO := https://github.com/waku-org/nwaku
 NWAKU_DIR := $(THIRD_PARTY_DIR)/nwaku
 
@@ -31,7 +31,10 @@ build-libwaku: prepare
 	@cd $(NWAKU_DIR) && make libwaku
 
 # Build Waku Go Bindings
-build: build-libwaku
+
+build: export CGO_CFLAGS = "-I${NWAKU_DIR}/library/"
+build: export CGO_LDFLAGS = "-L${NWAKU_DIR}/build/ -lwaku -L${NWAKU_DIR} -Wl,-rpath,${NWAKU_DIR}/build/"
+build:
 	@echo "Building Waku Go Bindings..."
 	go build ./...
 

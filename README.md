@@ -1,51 +1,52 @@
 # Waku Go Bindings
 
-This repository provides Go bindings for the Waku library, enabling seamless integration with Go projects.
+Go bindings for the Waku library.
 
-## Installation
-
-To build the required dependencies for this module, the `make` command needs to be executed. If you are integrating this module into another project via `go get`, ensure that you navigate to the `waku-go-bindings` module directory and run `make`.
-
-### Steps to Install
-
-Follow these steps to install and set up the module:
-
-1. Make sure your system has the [prerequisites](https://docs.waku.org/guides/nwaku/build-source#prerequisites) to run a local nwaku node
-
-2. Retrieve the module using `go get`:
-   ```
-   go get -u github.com/waku-org/waku-go-bindings
-   ```
-3. Navigate to the module's directory:
-   ```
-   cd $(go list -m -f '{{.Dir}}' github.com/waku-org/waku-go-bindings)
-   ```
-4. Prepare third_party directory and clone nwaku
-   ```
-   sudo mkdir third_party
-   sudo chown $USER third_party
-   ```
-5. Build the dependencies:
-   ```
-   make -C waku
-   ```
-
-Now the module is ready for use in your project.
-
-### Note
-
-In order to easily build the libwaku library on demand, it is recommended to add the following target in your project's Makefile:
+## Install
 
 ```
-LIBWAKU_DEP_PATH=$(shell go list -m -f '{{.Dir}}' github.com/waku-org/waku-go-bindings)
-
-buildlib:
-   cd $(LIBWAKU_DEP_PATH) &&\
-   sudo mkdir -p third_party &&\
-   sudo chown $(USER) third_party &&\
-   make -C waku
+go get -u github.com/waku-org/waku-go-bindings
 ```
 
-## Example Usage
+## Dependencies
 
-For an example on how to use this package, please take a look at our [example-go-bindings](https://github.com/gabrielmer/example-waku-go-bindings) repo
+This repository doesn't download or build `nwaku`. You must provide `libwaku` and its headers.
+
+To do so, you can:
+- Build `libwaku` from https://github.com/waku-org/nwaku.
+- Point `cgo` to the headers and compiled library when building your project.
+
+Example environment setup (adjust paths to your nwaku checkout):
+```
+export NWAKU_DIR=/path/to/nwaku
+export CGO_CFLAGS="-I${NWAKU_DIR}/library"
+export CGO_LDFLAGS="-L${NWAKU_DIR}/build -lwaku -Wl,-rpath,${NWAKU_DIR}/build"
+```
+
+Such setup would look like this in a `Makefile`:
+```Makefile
+NWAKU_DIR ?= /path/to/nwaku
+CGO_CFLAGS = -I$(NWAKU_DIR)/library
+CGO_LDFLAGS = -L$(NWAKU_DIR)/build -lwaku -Wl,-rpath,$(NWAKU_DIR)/build
+
+build: ## Your project build command
+	go build ./...
+```
+
+For a reference integration, see how `status-go` wires `CGO_CFLAGS` and `CGO_LDFLAGS` in its build setup.
+
+NOTE: If your project is itself used as a Go dependency, all its clients will have to follow the same nwaku setup. 
+
+## Development
+
+When working on this repository itself, `nwaku` is included as a git submodule for convenience.
+
+- Initialize and update the submodule, then build `libwaku`
+    ```sh
+    git submodule update --init --recursive
+    make -C waku build-libwaku
+    ```
+- Build the project. Submodule paths are used by default to find `libwaku`.
+    ```shell
+    make -C waku build
+    ```

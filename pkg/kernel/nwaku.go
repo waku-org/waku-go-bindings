@@ -739,12 +739,21 @@ func (n *WakuNode) GetNumConnectedPeers() (int, error) {
 	return numPeers, nil
 }
 
+// getContextTimeoutMilliseconds renders a context's remaining time as the
+// millisecond timeout the library expects. A context without a deadline gets
+// requestTimeout: the value goes straight to chronos' withTimeout, where zero
+// milliseconds expires immediately rather than meaning "no timeout".
 func getContextTimeoutMilliseconds(ctx context.Context) int {
 	deadline, ok := ctx.Deadline()
-	if ok {
-		return int(time.Until(deadline).Milliseconds())
+	if !ok {
+		return int(requestTimeout.Milliseconds())
 	}
-	return 0
+
+	remaining := time.Until(deadline)
+	if remaining <= 0 {
+		return 0
+	}
+	return int(remaining.Milliseconds())
 }
 
 func FormatWakuRelayTopic(clusterId uint16, shard uint16) string {

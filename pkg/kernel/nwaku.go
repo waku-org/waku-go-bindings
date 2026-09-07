@@ -741,10 +741,16 @@ func (n *WakuNode) GetNumConnectedPeers() (int, error) {
 
 func getContextTimeoutMilliseconds(ctx context.Context) int {
 	deadline, ok := ctx.Deadline()
-	if ok {
-		return int(time.Until(deadline).Milliseconds())
+	if !ok {
+		// Zero is "expire now" to the library, not "no timeout".
+		return int(requestTimeout.Milliseconds())
 	}
-	return 0
+
+	remaining := time.Until(deadline)
+	if remaining <= 0 {
+		return 0
+	}
+	return int(remaining.Milliseconds())
 }
 
 func FormatWakuRelayTopic(clusterId uint16, shard uint16) string {

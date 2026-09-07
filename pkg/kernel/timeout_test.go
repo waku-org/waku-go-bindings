@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-// Zero milliseconds is not "no timeout": chronos expires on it immediately, so
-// a context without a deadline has to fall back to the request timeout.
 func TestContextTimeoutFallsBackToRequestTimeout(t *testing.T) {
 	if got, want := getContextTimeoutMilliseconds(context.Background()),
 		int(requestTimeout.Milliseconds()); got != want {

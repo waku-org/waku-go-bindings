@@ -10,9 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// A peer.AddrInfo carries every address libp2p knows for a peer, and all of
-// them are sent. Before logos-delivery#4202 the library parsed that argument as
-// a single multiaddress, so a peer with more than one address failed outright.
 func TestStoreQueryWithSeveralPeerAddresses(t *testing.T) {
 	storeConfig := DefaultWakuConfig
 	storeConfig.Relay = true
@@ -38,6 +35,7 @@ func TestStoreQueryWithSeveralPeerAddresses(t *testing.T) {
 	storeInfo, err := peer.AddrInfoFromString(storeAddrs[0].String())
 	require.NoError(t, err)
 
+	// Unreachable, and first, so one address alone would not reach the peer.
 	storeInfo.Addrs = append([]multiaddr.Multiaddr{
 		multiaddr.StringCast("/ip4/127.0.0.1/tcp/1"),
 	}, storeInfo.Addrs...)
